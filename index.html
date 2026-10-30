@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f6f4">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="状态仪表盘">
+<meta name="format-detection" content="telephone=no">
+<title>我的状态仪表盘</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231b1b1b'/%3E%3Crect x='52' y='52' width='88' height='10' rx='5' fill='%23fff'/%3E%3Crect x='52' y='84' width='64' height='10' rx='5' fill='%23888'/%3E%3Crect x='52' y='116' width='44' height='10' rx='5' fill='%23888'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f6f6f4;
+    --card:#ffffff;
+    --card2:#f3f3f1;
+    --line:#e6e6e3;
+    --text:#1b1b1b;
+    --muted:#8a8a86;
+    --accent:#1b1b1b;
+    --ok:#4c7a5c;
+    --warn:#a06a1c;
+    --err:#b4443c;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",Roboto,sans-serif;
+    font-size:15px;
+    line-height:1.65;
+    min-height:100vh;
+    -webkit-text-size-adjust:100%;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    position:sticky;top:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:calc(env(safe-area-inset-top,0px) + 13px) 18px 13px 18px;
+    background:rgba(246,246,244,.94);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:9px;min-width:0}
+  h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+  .key-dot{
+    width:6px;height:6px;border-radius:50%;background:#cfcfca;flex:0 0 auto;
+  }
+  .key-dot.on{background:#5fa377}
+  #btnSettings{
+    flex:0 0 auto;
+    width:34px;height:34px;border-radius:8px;
+    border:1px solid var(--line);background:transparent;
+    color:var(--text);padding:0;
+    display:grid;place-items:center;cursor:pointer;
+  }
+  #btnSettings svg{width:17px;height:17px;display:block}
+  #btnSettings:active{background:var(--card2)}
+  main{padding:18px 18px calc(40px + env(safe-area-inset-bottom,0px)) 18px;max-width:620px;margin:0 auto}
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:12px;
+  }
+  .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .card-title{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;letter-spacing:.2px}
+  .emoji{display:none}
+  .sub{color:var(--muted);font-size:12px;font-weight:400}
+  label.field{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+  input[type=date],input[type=password],input[type=text]{
+    width:100%;padding:10px 12px;border-radius:8px;
+    border:1px solid var(--line);background:#fff;color:var(--text);
+    font-size:15px;font-family:inherit;outline:none;
+  }
+  input:focus{border-color:#bdbdb8}
+  textarea{
+    width:100%;min-height:76px;padding:11px 12px;border-radius:8px;
+    border:1px solid var(--line);background:#fff;color:var(--text);
+    font-size:15px;font-family:inherit;line-height:1.6;resize:vertical;outline:none;
+    -webkit-user-select:text;user-select:text;
+  }
+  textarea:focus{border-color:#bdbdb8}
+  textarea::placeholder,input::placeholder{color:#b3b3ae}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{
+    border:1px solid var(--line);background:#fff;color:var(--text);
+    padding:9px 13px;border-radius:8px;font-size:13.5px;font-family:inherit;
+    cursor:pointer;line-height:1.3;display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:active{background:var(--card2)}
+  .btn.primary{
+    border:none;background:var(--accent);
+    color:#fff;font-weight:500;
+  }
+  .btn.primary:active{background:#000}
+  .btn.ghost{background:transparent;color:var(--muted)}
+  .btn.ghost:active{background:var(--card2)}
+  .btn.small{padding:6px 10px;font-size:12.5px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .btn.grow{flex:1 1 auto;justify-content:center;min-width:120px}
+  .scale{margin-top:12px}
+  .scale-line{display:flex;align-items:center;gap:10px;margin-top:6px}
+  .scale-label{font-size:12px;color:var(--muted);flex:0 0 30px}
+  .dots{display:flex;gap:6px;flex:1 1 auto}
+  .dot{
+    flex:1 1 0;min-width:0;height:32px;border-radius:7px;
+    border:1px solid var(--line);background:#fff;color:var(--muted);
+    font-size:13px;font-family:inherit;cursor:pointer;
+    display:grid;place-items:center;
+  }
+  .dot.sel-energy{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+  .dot.sel-mood{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+  .card.filled{border-color:#d6d6d1}
+  .card .meta-line{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .save-flag{font-size:11.5px;color:var(--ok);opacity:0;transition:opacity .3s}
+  .save-flag.show{opacity:1}
+  .result{
+    white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
+    font-size:14.5px;line-height:1.85;
+    background:var(--card2);border-radius:8px;
+    padding:14px;margin-top:10px;
+    -webkit-user-select:text;user-select:text;
+    max-height:62vh;overflow-y:auto;
+  }
+  .status{font-size:12.5px;margin-top:8px;min-height:18px;color:var(--muted)}
+  .status.err{color:var(--err)}
+  .status.ok{color:var(--ok)}
+  .status.warn{color:var(--warn)}
+  .status.busy{color:var(--muted)}
+  .hist-item{
+    border-top:1px solid var(--line);
+    padding:11px 0;
+  }
+  .hist-item:first-child{border-top:none;padding-top:0}
+  .hist-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .hist-date{font-weight:500;font-size:13.5px}
+  .hist-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .tag{
+    font-size:11.5px;padding:1px 7px;border-radius:5px;
+    background:var(--card2);color:var(--muted);
+  }
+  .hist-body{font-size:12.5px;color:var(--muted);margin-top:6px;display:none;white-space:pre-wrap;word-break:break-word}
+  .hist-item.open .hist-body{display:block}
+  .hidden{display:none !important}
+  .modal-mask{
+    position:fixed;inset:0;background:rgba(28,28,28,.32);z-index:50;
+    display:flex;align-items:flex-end;justify-content:center;
+    padding:0;
+  }
+  .modal{
+    width:100%;max-width:620px;background:var(--bg);
+    border-radius:14px 14px 0 0;border-top:1px solid var(--line);
+    padding:20px 18px calc(22px + env(safe-area-inset-bottom,0px)) 18px;
+    max-height:92vh;overflow-y:auto;
+    animation:up .18s ease;
+  }
+  @keyframes up{from{transform:translateY(16px);opacity:.7}to{transform:none;opacity:1}}
+  .modal h2{font-size:15px;margin:0 0 4px 0;font-weight:600}
+  .modal .hint{font-size:12.5px;color:var(--muted);margin:0 0 16px 0;line-height:1.7}
+  .modal .field-block{margin-bottom:16px}
+  .modal .actions{display:flex;gap:8px;margin-top:18px}
+  .toast{
+    position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%) translateY(6px);
+    background:#1b1b1b;color:#fff;
+    padding:9px 15px;border-radius:8px;font-size:13px;z-index:80;
+    max-width:88vw;text-align:center;opacity:0;pointer-events:none;
+    transition:opacity .18s,transform .18s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#8c332c}
+  .spin{
+    display:inline-block;width:12px;height:12px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.4);border-top-color:#fff;
+    animation:sp .8s linear infinite;vertical-align:-2px;margin-right:5px;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+  .kv{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin:5px 0}
+  .kv b{color:var(--text);font-weight:500}
+  .copy-timeout{color:var(--warn);font-size:12px;margin-top:6px;display:none}
+  .copy-timeout.show{display:block}
+  /* ===== ★新增：奇思妙想 / 想法库 样式 ===== */
+  .idea-input textarea{min-height:80px}
+  .idea-groups{margin-top:12px}
+  .idea-group{border-top:1px solid var(--line);}
+  .idea-group:first-child{border-top:none}
+  .idea-group-head{
+    display:flex;align-items:center;gap:8px;width:100%;
+    background:transparent;border:none;color:var(--text);
+    padding:11px 0;font-size:13.5px;font-family:inherit;font-weight:600;
+    cursor:pointer;text-align:left;
+  }
+  .idea-group-arrow{
+    flex:0 0 auto;width:0;height:0;color:var(--muted);
+    border-left:5px solid currentColor;
+    border-top:4px solid transparent;
+    border-bottom:4px solid transparent;
+    transition:transform .18s;transform-origin:2px 50%;
+  }
+  .idea-group.open .idea-group-arrow{transform:rotate(90deg)}
+  .idea-group-count{margin-left:auto;font-weight:400;font-size:12px;color:var(--muted)}
+  .idea-group-body{display:none;padding:0 0 8px 0}
+  .idea-group.open .idea-group-body{display:block}
+  .idea-item{
+    border-top:1px solid var(--line);padding:12px 0 6px 0;
+  }
+  .idea-item:first-child{border-top:none;padding-top:2px}
+  .idea-text{font-size:14px;line-height:1.65;word-break:break-word;white-space:pre-wrap}
+  .idea-sum{font-size:12.5px;color:var(--muted);margin-top:4px;word-break:break-word}
+  .idea-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  .chip{
+    font-size:11.5px;padding:1px 7px;border-radius:5px;
+    background:var(--card2);color:var(--muted);
+  }
+  .chip.act-now{color:#4c7a5c;background:#eef4ef}
+  .chip.act-later{color:#a06a1c;background:#f7f2e8}
+  .chip.act-someday{color:#8a8a86}
+  .chip.uncat{color:#b4443c;background:#f8eeed}
+  .idea-ops{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
+  .idea-ops button{
+    background:none;border:none;padding:0;color:var(--muted);
+    font-size:12.5px;font-family:inherit;cursor:pointer;
+  }
+  .idea-ops button.danger{color:#b4443c}
+  .idea-ops button[disabled]{opacity:.45}
+  .idea-date{color:var(--muted);font-size:11.5px;margin-left:auto}
+  .idea-edit{width:100%;min-height:60px;margin-top:6px}
+  .tag-hit{color:#fff;background:#bdbdb8;border-radius:3px}
+  @media (min-width:600px){
+    .card{padding:18px}
+    h1{font-size:17px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>我的状态仪表盘</h1>
+    <span class="key-dot" id="keyDot" title="API Key 状态"></span>
+  </div>
+  <button id="btnSettings" aria-label="设置">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H8a1.7 1.7 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1.1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V8a1.7 1.7 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+
+<main>
+
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">记录日期</div>
+      <span class="sub" id="dateHint">默认今天</span>
+    </div>
+    <input type="date" id="dateInput">
+    <div class="row" style="margin-top:10px">
+      <button class="btn small" id="btnToday">回到今天</button>
+      <button class="btn small" id="btnYesterday">昨天</button>
+    </div>
+  </section>
+
+  <section id="slotContainer"></section>
+
+  <!-- ★新增：奇思妙想 输入区（位于四个时段卡片下面、生成今日总结上面） -->
+  <section class="card idea-input" id="ideaCard">
+    <div class="card-head">
+      <div class="card-title">奇思妙想</div>
+      <span class="sub" id="ideaCount">共 0 条</span>
+    </div>
+    <textarea id="ideaText" maxlength="500" placeholder="随手写一句想法，比如：能不能做个记录每天心情的日历？"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary grow" id="btnSaveIdea">保存并归类</button>
+    </div>
+    <div class="status" id="ideaStatus"></div>
+  </section>
+
+  <!-- ★新增：想法库 -->
+  <section class="card" id="ideaLibCard">
+    <div class="card-head">
+      <div class="card-title">想法库</div>
+      <span class="sub" id="ideaLibCount"></span>
+    </div>
+    <input type="text" id="ideaSearch" placeholder="搜索关键词（原文 / 类型 / 标签 / 摘要）" autocomplete="off" spellcheck="false">
+    <div class="row" style="margin-top:8px">
+      <button class="btn small" id="btnReclassAll">重新归类（未分类 0）</button>
+      <button class="btn small ghost" id="btnReclassOthers">重新归类（其他）</button>
+      <button class="btn small ghost" id="btnIdeaExpandAll">全部展开</button>
+      <button class="btn small ghost" id="btnIdeaCollapseAll">全部折叠</button>
+    </div>
+    <div class="status" id="ideaBatchStatus"></div>
+    <div id="ideaGroups"></div>
+    <div class="sub" id="ideaEmpty" style="padding:6px 0">还没有想法。在上面写一句，点“保存并归类”，AI 会帮你按类型归档。</div>
+  </section>
+
+  <section class="card">
+    <div class="row">
+      <button class="btn primary grow" id="btnDaily">生成今日总结</button>
+      <button class="btn ghost" id="btnClearDay">清空本日</button>
+    </div>
+    <div class="status" id="dailyStatus"></div>
+  </section>
+
+  <section class="card" id="dailyResultCard" hidden>
+    <div class="card-head">
+      <div class="card-title">今日总结</div>
+      <span class="sub" id="dailyResultTime"></span>
+    </div>
+    <div class="row">
+      <button class="btn small" id="btnCopyTodo">复制待办</button>
+      <button class="btn small" id="btnCopyDaily">复制全文</button>
+      <button class="btn small ghost" id="btnHideDaily">收起</button>
+    </div>
+    <div class="copy-timeout" id="dailyCopyTip">自动复制没成功，已弹出文本框，请长按全选复制。</div>
+    <div class="result" id="dailyResult"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">本周分析</div>
+      <span class="sub" id="weekCountHint"></span>
+    </div>
+    <button class="btn primary grow" id="btnWeekly" style="width:100%;justify-content:center">生成本周分析</button>
+    <div class="status" id="weeklyStatus"></div>
+  </section>
+
+  <section class="card" id="weeklyResultCard" hidden>
+    <div class="card-head">
+      <div class="card-title">本周分析</div>
+      <span class="sub" id="weeklyResultTime"></span>
+    </div>
+    <div class="row">
+      <button class="btn small" id="btnCopyWeekTodo">复制周待办</button>
+      <button class="btn small" id="btnCopyWeekly">复制全文</button>
+      <button class="btn small ghost" id="btnHideWeekly">收起</button>
+    </div>
+    <div class="copy-timeout" id="weeklyCopyTip">自动复制没成功，已弹出文本框，请长按全选复制。</div>
+    <div class="result" id="weeklyResult"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">历史记录</div>
+      <span class="sub" id="histCount"></span>
+    </div>
+    <div id="histList"></div>
+    <div class="sub" id="histEmpty" style="padding:6px 0">还没有记录。先在上面写一句话、点选精力/情绪，就会自动保存。</div>
+  </section>
+
+  <div class="divider"></div>
+  <div class="sub" style="text-align:center;line-height:1.8">
+    数据只存在本机浏览器里（localStorage）<br>
+    API Key 只存在本机，不会上传到任何服务器
+  </div>
+
+</main>
+
+<!-- 设置弹窗 -->
+<div class="modal-mask hidden" id="settingsMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="设置">
+    <h2>设置</h2>
+    <p class="hint">API Key 只保存在你这台手机的浏览器里，不会写进代码、不会发给第三方。</p>
+
+    <div class="field-block">
+      <label class="field" for="apiKeyInput">DeepSeek API Key（以 sk- 开头）</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-...（粘贴在这里）" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="row" style="margin-top:8px">
+        <button class="btn small" id="btnToggleKey">显示/隐藏</button>
+        <button class="btn small" id="btnTestKey">测试连接</button>
+        <button class="btn small ghost" id="btnClearKey">清除 Key</button>
+      </div>
+      <div class="status" id="keyStatus"></div>
+    </div>
+
+    <div class="field-block">
+      <label class="field" for="modelInput">模型名称（一般不用改）</label>
+      <input type="text" id="modelInput" placeholder="deepseek-chat" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="field-block">
+      <div class="kv"><span>已存历史记录</span><b id="statHist">0 条</b></div>
+      <div class="kv"><span>已存周报</span><b id="statWeek">0 条</b></div>
+      <div class="kv"><span>浏览器里已用容量</span><b id="statSize">-</b></div>
+    </div>
+
+    <div class="row">
+      <button class="btn small ghost" id="btnExport">导出备份</button>
+      <button class="btn small ghost" id="btnImport">导入备份</button>
+      <button class="btn small ghost" id="btnWipe">全部清空</button>
+    </div>
+    <div class="status" id="miscStatus"></div>
+
+    <div class="hint" style="margin-top:14px;line-height:1.9">
+      iPhone 用 Safari 打开，点底部分享 →「添加到主屏幕」；<br>
+      安卓用 Chrome 打开，点右上角 ⋮ →「添加到主屏幕 / 安装应用」。
+    </div>
+
+    <div class="actions">
+      <button class="btn primary grow" id="btnSaveSettings">保存</button>
+      <button class="btn ghost" id="btnCloseSettings">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 复制降级文本框 -->
+<div class="modal-mask hidden" id="copyMask">
+  <div class="modal">
+    <h2>手动复制</h2>
+    <p class="hint">这台浏览器不允许脚本直接写剪贴板。请长按下面的内容，全选后复制。</p>
+    <textarea id="copyArea" style="min-height:200px;font-size:14px"></textarea>
+    <div class="actions">
+      <button class="btn primary grow" id="btnCopyAgain">再试一次自动复制</button>
+      <button class="btn ghost" id="btnCopyClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+(function () {
+  /* =============== 常量 =============== */
+  var API_URL = "https://api.deepseek.com/chat/completions";
+  var DEFAULT_MODEL = "deepseek-chat";
+  var TIMEOUT_MS = 120000;              // 单次请求超时：120 秒
+  var HIST_MAX = 90;                    // 历史记录最多保留条数
+  var WEEK_MAX = 20;                    // 周报最多保留条数
+  var WEEK_MIN_DAYS = 3;                // 周分析至少需要的天数
+
+  var LS = {
+    KEY: "pd_api_key",
+    MODEL: "pd_model",
+    HIST: "pd_history",
+    WEEK: "pd_weekly",
+    IDEAS: "dash_ideas"          // ★新增：想法库
+  };
+
+  /* ★新增：想法库常量 */
+  var IDEA_MAX = 500;                                 // 想法最多保留条数
+  var IDEA_TYPES = ["产品点子", "写作灵感", "生活想法", "待解决问题", "想做的事", "情绪吐槽", "疑问", "未分类", "其他"];
+  var IDEA_TAG_POOL = ["工作", "学习", "生活", "人际", "自我成长", "健康", "消费", "娱乐", "其他"];
+  var IDEA_ACTIONS = ["现在能做", "以后能做", "只是想想"];
+
+  /* ★新增：想法归类提示词（内置，不联网取） */
+  var PROMPT_IDEA_SYSTEM = [
+    "你是我的想法归类助手。我会给你一句我的奇思妙想，请只基于这句话归类，不要编造，不要扩写。",
+    "",
+    "返回严格 JSON，不要 Markdown 代码块，不要多余解释：",
+    "{",
+    "  \"type\": \"产品点子/写作灵感/生活想法/待解决问题/想做的事/情绪吐槽/疑问/其他\",",
+    "  \"tags\": [\"从这些里选1-3个：工作、学习、生活、人际、自我成长、健康、消费、娱乐、其他\"],",
+    "  \"actionable\": \"现在能做/以后能做/只是想想\",",
+    "  \"summary\": \"不超过20字的一句话摘要\"",
+    "}",
+    "",
+    "规则：只选一个 type；tags 最多3个；拿不准就选“其他”；summary 必须是原意的压缩，不要加戏。"
+  ].join("\n");
+
+  var SLOTS = [
+    { id: "morning", emoji: "🌅", name: "早上" },
+    { id: "noon",    emoji: "☀️", name: "中午" },
+    { id: "afternoon", emoji: "🌤️", name: "下午" },
+    { id: "evening", emoji: "🌙", name: "晚上" }
+  ];
+
+  /* =============== 内置提示词（两套） =============== */
+  var PROMPT_DAILY = [
+    "你是一个客观、克制、不讨好的“个人状态记录助手”。下面是一个用户某一天四个时段的自述记录和自评分数。",
+    "",
+    "【硬性规则（必须遵守）】",
+    "1. 用户手填的精力/情绪分数以用户为准：不要修改、不要重算、不要“修正”成你判断的数值；引用时原样使用。",
+    "2. 用户没有提到的内容，一律写“未提及”，不要编造经历、事件、原因。",
+    "3. 凡是基于推断而不是用户原话得出的结论，必须在句子后面标注“（推断）”。",
+    "4. 不做医疗诊断，不给用药建议，不下“抑郁/焦虑/失眠症”等疾病结论；涉及身心症状只做温和提醒，并在必要时建议咨询专业人士。",
+    "5. 信息不足以支撑某条判断时，直接写“样本不足”，不要硬凑。",
+    "6. 输出纯文本，不要 Markdown 表格、不要代码块、不要加粗符号。",
+    "",
+    "【用户当日记录】",
+    "{{DATA}}",
+    "",
+    "【输出格式（严格按下面 7 行标题，顺序不能变，标题必须原样保留）】",
+    "【四时段】",
+    "  - 早上：一句话概括（原话为主）",
+    "  - 中午：一句话概括",
+    "  - 下午：一句话概括",
+    "  - 晚上：一句话概括",
+    "【今日总结】",
+    "  3~5 句话，说清今天整体状态、起伏、以及最可能的关联（有推断就标“（推断）”）",
+    "【观察】",
+    "  1. 第一条观察",
+    "  2. 第二条观察",
+    "【建议】",
+    "  只给 1 条，具体、今天或明天就能做的那种",
+    "【待办】",
+    "  - [ ] 待办1",
+    "  - [ ] 待办2",
+    "",
+    "待办写 1~3 条，每条不超过 24 个字，必须是能直接执行的动作。",
+    "全文中文字数控制在 250~450 字之间。"
+  ].join("\n");
+
+  var PROMPT_WEEK = [
+    "你是一个客观、克制的个人状态分析师。下面是用户最近 7 条（不足 7 条则为全部）每日状态记录。每条包含日期、四个时段的一句话记录、以及用户自评的精力（1-5）和情绪（1-5）。",
+    "",
+    "【硬性规则（必须遵守）】",
+    "1. 用户手填的分数以用户为准，不要修改、不要重算；只能引用并统计。",
+    "2. 用户没有记录到的内容写“未提及”，不要编造。",
+    "3. 凡是推断而非用户原话得出的结论，句子后标“（推断）”。",
+    "4. 不做医疗诊断，不给用药建议，不下疾病结论。",
+    "5. 记录天数不足 3 天时，在【本周一句话】里直接说明“样本不足”，其余部分尽量只基于已有记录做谨慎描述。",
+    "6. 【下周一个最小实验】只能给 1 个，不能给多个，必须小到 10 分钟内可完成、并写明判断成功的方法。",
+    "7. 输出纯文本，不要 Markdown 表格、不要代码块、不要加粗符号。",
+    "",
+    "【用户记录】",
+    "{{DATA}}",
+    "",
+    "【输出格式（严格按下面的标题，顺序不能变，标题必须原样保留）】",
+    "【本周一句话】",
+    "  一句话概括",
+    "【精力曲线】",
+   "  描述每天的精力数值变化与高低点（直接引用用户分数；没有记录的日子写“未记录”）",
+    "【情绪趋势】",
+    "  描述情绪的变化趋势、波动与触发点",
+    "【压力源排行】",
+    "  1. 压力源（出现次数/依据）",
+    "  2. ...",
+    "  没有可识别的压力源就写“未提及”",
+    "【活动与状态关联】",
+    "  哪些活动之后精力/情绪更高或更低，说清依据；证据不足写“样本不足”",
+    "【心理提醒】",
+    "  1. 第一条",
+    "  2. 第二条",
+    "  温和、具体、不做诊断",
+    "【下周一个最小实验】",
+    "  只写 1 个实验：做什么 + 做多久 + 怎么判断有效",
+    "【待办】",
+    "  - [ ] 待办1",
+    "  - [ ] 待办2",
+    "",
+    "待办写 2~4 条，每条不超过 24 个字，必须是下周能直接执行的具体动作。",
+    "全文中文字数控制在 400~700 字之间。"
+  ].join("\n");
+
+  /* =============== 小工具 =============== */
+  function $(id) { return document.getElementById(id); }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  // 允许通过 ?date=YYYY-MM-DD 追加时间偏移（自动化测试用），平时无影响
+  var DATE_OFFSET_DAYS = (function () {
+    try {
+      var m = /[?&]dayoffset=(-?\d+)/.exec(window.location.search || "");
+      return m ? parseInt(m[1], 10) : 0;
+    } catch (e) { return 0; }
+  })();
+
+  function todayStr() {
+    var d = new Date();
+    if (DATE_OFFSET_DAYS) d.setDate(d.getDate() + DATE_OFFSET_DAYS);
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  }
+  function shiftDate(str, days) {
+    var p = str.split("-");
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    d.setDate(d.getDate() + days);
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  }
+  function weekdayCN(str) {
+    var p = str.split("-");
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    return "周" + "日一二三四五六".charAt(d.getDay());
+  }
+
+  // localStorage 是否可用（隐私模式下可能抛错）
+  var LS_OK = true;
+  try {
+    localStorage.setItem("pd_probe", "1");
+    localStorage.removeItem("pd_probe");
+  } catch (e) { LS_OK = false; }
+
+  function lsGet(key, fallback) {
+    if (!LS_OK) return fallback;
+    try {
+      var raw = localStorage.getItem(key);
+      if (raw === null || raw === "") return fallback;
+      return JSON.parse(raw);
+    } catch (e) {
+      return fallback;
+    }
+  }
+  function lsSet(key, value) {
+    if (!LS_OK) return false;
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      showToast("保存失败：浏览器存储空间不足或处于隐私模式", true);
+      return false;
+    }
+  }
+
+  var toastTimer = null;
+  function showToast(msg, isErr) {
+    var t = $("toast");
+    t.textContent = msg;
+    t.className = "toast show" + (isErr ? " err" : "");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = "toast" + (isErr ? " err" : ""); }, 2600);
+  }
+
+  function setStatus(el, text, type) {
+    el.className = "status" + (type ? " " + type : "");
+    el.innerHTML = "";
+    if (type === "busy") {
+      var s = document.createElement("span");
+      s.className = "spin";
+      el.appendChild(s);
+    }
+    el.appendChild(document.createTextNode(text));
+  }
+
+  /* =============== 数据层 =============== */
+  var store = {
+    getKey: function () { return (localStorage.getItem(LS.KEY) || "").trim(); },
+    setKey: function (v) { localStorage.setItem(LS.KEY, v); },
+    getModel: function () { return (localStorage.getItem(LS.MODEL) || DEFAULT_MODEL).trim() || DEFAULT_MODEL; },
+    setModel: function (v) { localStorage.setItem(LS.MODEL, v); },
+
+    getHistory: function () {
+      var arr = lsGet(LS.HIST, []);
+      return Array.isArray(arr) ? arr : [];
+    },
+    saveHistory: function (arr) {
+      arr.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+      var cut = arr.slice(0, HIST_MAX);
+      lsSet(LS.HIST, cut);
+      return cut;
+    },
+    findDay: function (date) {
+      var arr = store.getHistory();
+      for (var i = 0; i < arr.length; i++) { if (arr[i].date === date) return arr[i]; }
+      return null;
+    },
+    upsertDay: function (day) {
+      var arr = store.getHistory();
+      var idx = -1;
+      for (var i = 0; i < arr.length; i++) { if (arr[i].date === day.date) { idx = i; break; } }
+      if (idx >= 0) arr[idx] = day; else arr.push(day);
+      return store.saveHistory(arr);
+    },
+    removeDay: function (date) {
+      var arr = store.getHistory().filter(function (x) { return x.date !== date; });
+      return store.saveHistory(arr);
+    },
+
+    getWeekly: function () {
+      var arr = lsGet(LS.WEEK, []);
+      return Array.isArray(arr) ? arr : [];
+    },
+    addWeekly: function (item) {
+      var arr = store.getWeekly();
+      arr.unshift(item);
+      var cut = arr.slice(0, WEEK_MAX);
+      lsSet(LS.WEEK, cut);
+      return cut;
+    }
+  };
+
+  function blankDay(date) {
+    var slots = {};
+    SLOTS.forEach(function (s) {
+      slots[s.id] = { text: "", energy: 0, mood: 0 };
+    });
+    return { date: date, slots: slots, summary: "", summaryAt: "", updatedAt: "" };
+  }
+
+  function dayIsEmpty(day) {
+    if (!day || !day.slots) return true;
+    for (var i = 0; i < SLOTS.length; i++) {
+      var s = day.slots[SLOTS[i].id];
+      if (s && (String(s.text || "").trim() !== "" || Number(s.energy) > 0 || Number(s.mood) > 0)) return false;
+    }
+    return true;
+  }
+
+  /* =============== 状态 =============== */
+  var state = {
+    date: todayStr(),
+    day: null,
+    busyDaily: false,
+    busyWeekly: false,
+    lastWeeklyText: ""
+  };
+
+  /* =============== 渲染：四时段卡片 =============== */
+  function buildSlots() {
+    var box = $("slotContainer");
+    box.innerHTML = "";
+    SLOTS.forEach(function (s) {
+      var card = document.createElement("section");
+      card.className = "card slot-card";
+      card.id = "card-" + s.id;
+      card.dataset.slot = s.id;
+
+      var head = document.createElement("div");
+      head.className = "card-head";
+      var title = document.createElement("div");
+      title.className = "card-title";
+      title.innerHTML = '<span class="emoji">' + s.emoji + '</span><span>' + s.name + '</span>';
+      var flag = document.createElement("span");
+      flag.className = "save-flag";
+      flag.id = "flag-" + s.id;
+      flag.textContent = "已保存";
+      head.appendChild(title);
+      head.appendChild(flag);
+
+      var ta = document.createElement("textarea");
+      ta.id = "text-" + s.id;
+      ta.dataset.slot = s.id;
+      ta.placeholder = s.name + "想说的话（一句话就够）";
+      ta.maxLength = 500;
+      ta.addEventListener("input", function () { onSlotChange(s.id); });
+      ta.addEventListener("blur", function () { flushSave(s.id); });
+
+      var scale = document.createElement("div");
+      scale.className = "scale";
+      scale.appendChild(makeScaleRow("精力", s.id, "energy"));
+      scale.appendChild(makeScaleRow("情绪", s.id, "mood"));
+
+      card.appendChild(head);
+      card.appendChild(ta);
+      card.appendChild(scale);
+      box.appendChild(card);
+    });
+  }
+
+  function makeScaleRow(labelText, slotId, kind) {
+    var wrap = document.createElement("div");
+    wrap.className = "scale-line";
+    var lb = document.createElement("div");
+    lb.className = "scale-label";
+    lb.textContent = labelText;
+    var dots = document.createElement("div");
+    dots.className = "dots";
+    for (var i = 1; i <= 5; i++) {
+      (function (val) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "dot " + kind;
+        b.textContent = String(val);
+        b.dataset.slot = slotId;
+        b.dataset.kind = kind;
+        b.dataset.val = String(val);
+        b.addEventListener("click", function () { toggleScore(slotId, kind, val); });
+        dots.appendChild(b);
+      })(i);
+    }
+    wrap.appendChild(lb);
+    wrap.appendChild(dots);
+    return wrap;
+  }
+
+  function toggleScore(slotId, kind, val) {
+    if (!state.day || !state.day.slots[slotId]) return;
+    var s = state.day.slots[slotId];
+    s[kind] = (Number(s[kind]) === val) ? 0 : val;
+    paintSlot(slotId);
+    scheduleSave(slotId, 0);
+  }
+
+  function paintSlot(slotId) {
+    var s = state.day.slots[slotId];
+    var dots = document.querySelectorAll('.dot[data-slot="' + slotId + '"]');
+    Array.prototype.forEach.call(dots, function (b) {
+      var kind = b.dataset.kind;
+      var on = Number(s[kind]) === Number(b.dataset.val);
+      b.className = "dot " + kind + (on ? (" sel-" + kind) : "");
+    });
+    var filled = String(s.text || "").trim() !== "" || s.energy > 0 || s.mood > 0;
+    var cardEl = $("card-" + slotId);
+    if (cardEl) cardEl.className = "card slot-card" + (filled ? " filled" : "");
+  }
+
+  function paintAllSlots() {
+    SLOTS.forEach(function (s) {
+      var ta = $("text-" + s.id);
+      if (ta) ta.value = state.day.slots[s.id].text || "";
+      paintSlot(s.id);
+    });
+  }
+
+  /* =============== 保存（防抖） =============== */
+  var saveTimers = {};
+  function scheduleSave(slotId, delay) {
+    if (saveTimers[slotId]) clearTimeout(saveTimers[slotId]);
+    saveTimers[slotId] = setTimeout(function () { flushSave(slotId); }, delay || 600);
+  }
+  function flushSave(slotId) {
+    if (saveTimers[slotId]) { clearTimeout(saveTimers[slotId]); saveTimers[slotId] = null; }
+    saveDay(true);
+    var flag = $("flag-" + slotId);
+    if (flag) {
+      flag.className = "save-flag show";
+      setTimeout(function () { flag.className = "save-flag"; }, 1200);
+    }
+  }
+  function onSlotChange(slotId) {
+    if (!state.day || !state.day.slots[slotId]) return;
+    var ta = $("text-" + slotId);
+    if (ta) state.day.slots[slotId].text = ta.value;
+    paintSlot(slotId);
+    scheduleSave(slotId, 800);
+  }
+
+  // 把当前正在编辑的内容同步进 state.day（防止切日期时丢掉还没输入的最后一个字）
+  function syncDomToState() {
+    if (!state.day) return;
+    SLOTS.forEach(function (s) {
+      var ta = $("text-" + s.id);
+      if (ta && state.day.slots[s.id]) state.day.slots[s.id].text = ta.value;
+    });
+  }
+
+  function saveDay(silent) {
+    if (!state.day) return;
+    syncDomToState();
+    state.day.updatedAt = new Date().toISOString();
+    if (dayIsEmpty(state.day)) {
+      store.removeDay(state.date);
+    } else {
+      store.upsertDay(state.day);
+    }
+    renderHistory();
+    renderCounts();
+    if (!silent) showToast("已保存");
+  }
+
+  /* =============== 日期切换 =============== */
+  function loadDate(date) {
+    state.date = date;
+    var di = $("dateInput");
+    if (di) di.value = date;
+    var found = store.findDay(date);
+    state.day = found ? deepCopyDay(found) : blankDay(date);
+    if (!state.day.slots) state.day.slots = blankDay(date).slots;
+    SLOTS.forEach(function (s) { if (!state.day.slots[s.id]) state.day.slots[s.id] = { text: "", energy: 0, mood: 0 }; });
+    paintAllSlots();
+    var isToday = (date === todayStr());
+    $("dateHint").textContent = (isToday ? "今天" : "补录") + " · " + weekdayCN(date);
+    renderDailyResult();
+    renderWeeklyResult();
+  }
+
+  function deepCopyDay(d) {
+    return JSON.parse(JSON.stringify(d));
+  }
+
+  /* =============== 历史记录渲染 =============== */
+  function renderHistory() {
+    var arr = store.getHistory();
+    var box = $("histList");
+    box.innerHTML = "";
+    $("histEmpty").style.display = arr.length ? "none" : "block";
+    arr.forEach(function (d) {
+      var scoresE = [], scoresM = [];
+      SLOTS.forEach(function (s) {
+        var v = d.slots && d.slots[s.id] ? d.slots[s.id] : { text: "", energy: 0, mood: 0 };
+        if (v.energy > 0) scoresE.push(s.name + v.energy);
+        if (v.mood > 0) scoresM.push(s.name + v.mood);
+      });
+      var item = document.createElement("div");
+      item.className = "hist-item";
+
+      var head = document.createElement("div");
+      head.className = "hist-head";
+      var dt = document.createElement("div");
+      dt.className = "hist-date";
+      dt.textContent = d.date + " " + weekdayCN(d.date);
+      var ops = document.createElement("div");
+      var bOpen = document.createElement("button");
+      bOpen.className = "btn small ghost";
+      bOpen.textContent = "查看";
+      bOpen.addEventListener("click", function () {
+        item.classList.toggle("open");
+        bOpen.textContent = item.classList.contains("open") ? "收起" : "查看";
+      });
+      var bDel = document.createElement("button");
+      bDel.className = "btn small ghost";
+      bDel.textContent = "删除";
+      bDel.style.color = "#ff5b72";
+      bDel.addEventListener("click", function () {
+        if (!confirm("确定删除 " + d.date + " 的记录吗？删除后不可恢复。")) return;
+        store.removeDay(d.date);
+        if (state.date === d.date) loadDate(d.date);
+        renderHistory();
+        renderCounts();
+        showToast("已删除 " + d.date);
+      });
+      ops.appendChild(bOpen);
+      ops.appendChild(bDel);
+      head.appendChild(dt);
+      head.appendChild(ops);
+
+      var tags = document.createElement("div");
+      tags.className = "hist-tags";
+      tags.appendChild(mkTag("精力 " + (scoresE.length ? scoresE.join(" ") : "未填")));
+      tags.appendChild(mkTag("情绪 " + (scoresM.length ? scoresM.join(" ") : "未填")));
+      var nText = 0;
+      SLOTS.forEach(function (s) {
+        var v = d.slots && d.slots[s.id];
+        if (v && String(v.text || "").trim()) nText++;
+      });
+      tags.appendChild(mkTag("已写 " + nText + "/4 段"));
+
+      var body = document.createElement("div");
+      body.className = "hist-body";
+      var lines = [];
+      SLOTS.forEach(function (s) {
+        var v = d.slots && d.slots[s.id] ? d.slots[s.id] : {};
+        if (String(v.text || "").trim()) {
+          lines.push(s.emoji + " " + s.name + "：" + v.text);
+        }
+      });
+      if (d.summary) {
+        lines.push("");
+        lines.push("—— 今日总结 ——");
+        lines.push(d.summary);
+      }
+      body.textContent = lines.length ? lines.join("\n") : "（本日只填了分数，没有文字）";
+
+      item.appendChild(head);
+      item.appendChild(tags);
+      item.appendChild(body);
+      box.appendChild(item);
+    });
+  }
+
+  function mkTag(t) {
+    var e = document.createElement("span");
+    e.className = "tag";
+    e.textContent = t;
+    return e;
+  }
+
+  /* ===================================================================
+     ★★★ 新增模块：奇思妙想 / 想法库 ★★★
+     数据存在 localStorage 的 dash_ideas 里：
+     [{ id, text, type, tags:[], actionable, summary, date, ts }]
+     =================================================================== */
+
+  var ideaState = {
+    open: {},            // 分组折叠状态：{ 类型名: true }
+    query: "",           // 搜索关键词
+    busyId: "",          // 正在单条重新归类的想法 id
+    busyAll: false,      // 是否正在批量重新归类
+    editingId: ""        // 正在改写原文的想法 id（空=没有）
+  };
+
+  function ideasGet() {
+    var arr = lsGet(LS.IDEAS, []);
+    return ideasSorted(Array.isArray(arr) ? arr : []);
+  }
+
+  // 保存：按时间倒序，最多 IDEA_MAX 条
+  function ideasSave(arr) {
+    var list = (Array.isArray(arr) ? arr : []).slice();
+    list.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    var cut = list.slice(0, IDEA_MAX);
+    lsSet(LS.IDEAS, cut);
+    return cut;
+  }
+
+  // 读出来的时候也排一次序（防止别的标签页写入了乱序数据）
+  function ideasSorted(arr) {
+    var list = (Array.isArray(arr) ? arr : []).slice();
+    list.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    return list;
+  }
+
+  function nowStamp() {
+    var d = new Date();
+    return {
+      date: d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()),
+      ts: d.getTime()
+    };
+  }
+
+  // 把用户写的那句话安全地包进给 AI 的用户消息里
+  function buildIdeaUserContent(text) {
+    return "我的想法：「" + text + "」\n\n请按 system 消息里的要求，只返回 JSON。";
+  }
+
+  // 类型归一化：模型写"产品点子"或"产品点子/写作灵感"都能落到一个分类
+  // ★新增：单独的入口，供“未分类 / 其他”按钮使用
+  function reclassifyUncat() {
+    reclassifyAllUncategorized("未分类");
+  }
+  function reclassifyOthers() {
+    reclassifyAllUncategorized("其他");
+  }
+  function normalizeIdeaType(t) {
+    var s = String(t || "").trim();
+    if (!s) return "未分类";
+    for (var i = 0; i < IDEA_TYPES.length; i++) {
+      if (s === IDEA_TYPES[i]) return IDEA_TYPES[i];
+    }
+    for (var j = 0; j < IDEA_TYPES.length; j++) {
+      var k = IDEA_TYPES[j];
+      if (k !== "其他" && k !== "未分类" && s.indexOf(k) >= 0) return k;
+    }
+    for (var m = 0; m < IDEA_TYPES.length; m++) {
+      if (s.indexOf(IDEA_TYPES[m]) >= 0) return IDEA_TYPES[m];
+    }
+    return "其他";
+  }
+
+  function normalizeTags(list) {
+    var out = [];
+    if (!Array.isArray(list)) list = (list ? [list] : []);
+    list.forEach(function (t) {
+      var s = String(t || "").replace(/[#＃\s]/g, "").trim();
+      if (!s) return;
+      var hit = "";
+      for (var i = 0; i < IDEA_TAG_POOL.length; i++) {
+        if (s.indexOf(IDEA_TAG_POOL[i]) >= 0 || IDEA_TAG_POOL[i].indexOf(s) >= 0) { hit = IDEA_TAG_POOL[i]; break; }
+      }
+      if (!hit) hit = "其他";
+      if (out.indexOf(hit) < 0) out.push(hit);
+    });
+    return out.slice(0, 3);              // tags 最多 3 个
+  }
+
+  function normalizeActionable(a) {
+    var s = String(a || "").trim();
+    if (s.indexOf("现在") >= 0) return "现在能做";
+    if (s.indexOf("以后") >= 0 || s.indexOf("之后") >= 0 || s.indexOf("将来") >= 0) return "以后能做";
+    if (s.indexOf("想") >= 0) return "只是想想";
+    return "只是想想";
+  }
+
+  function normalizeSummary(s, fallback) {
+    var t = String(s || "").replace(/\s+/g, " ").trim();
+    if (!t) t = String(fallback || "").replace(/\s+/g, " ").trim();
+    if (t.length > 20) t = t.slice(0, 20);
+    return t;
+  }
+
+  // 从模型回复里抠出 JSON（容错：带 ```json 围栏、前后有多余话、用了中文引号）
+  function parseIdeaJson(raw) {
+    var s = String(raw || "");
+    if (!s.trim()) return null;
+    s = s.replace(/```[a-zA-Z]*\s*/g, "").replace(/```/g, "");
+    var a = s.indexOf("{"), b = s.lastIndexOf("}");
+    if (a >= 0 && b > a) s = s.slice(a, b + 1);
+    s = s.replace(/[“”]/g, "\"").replace(/[‘’]/g, "'");
+    var obj = null;
+    try {
+      obj = JSON.parse(s);
+    } catch (e1) {
+      // 再兜一层：把 <summary> 这种标签去掉再试
+      var s2 = s.replace(/<\/?[a-zA-Z_]+>/g, "");
+      try { obj = JSON.parse(s2); } catch (e2) { obj = null; }
+    }
+    if (!obj || typeof obj !== "object") return null;
+    if (typeof obj.type !== "string" && typeof obj.summary !== "string") return null;
+    return obj;
+  }
+
+  // 保存一条想法（text 已确定，结果可能是解析好的，也可能是 null=归类失败）
+  function addIdea(text, parsed) {
+    var st = nowStamp();
+    var item = {
+      id: uid(),
+      text: text,
+      type: parsed ? normalizeIdeaType(parsed.type) : "未分类",
+      tags: parsed ? normalizeTags(parsed.tags) : [],
+      actionable: parsed ? normalizeActionable(parsed.actionable) : "只是想想",
+      summary: parsed ? normalizeSummary(parsed.summary, text) : normalizeSummary("", text),
+      date: st.date,
+      ts: st.ts
+    };
+    var arr = ideasGet();
+    arr.unshift(item);
+    ideasSave(arr);
+    return item;
+  }
+
+  function onSaveIdea() {
+    if (ideaState.busyId === "__new__") return;
+    var ta = $("ideaText");
+    var text = String(ta.value || "").replace(/[ \t]+$/gm, "").trim();
+    var status = $("ideaStatus");
+
+    if (!text) {
+      setStatus(status, "先写一句想法", "warn");
+      showToast("先写一句想法", true);
+      ta.focus();
+      return;
+    }
+    if (!store.getKey()) {
+      setStatus(status, "还没有填 API Key。点右上角设置，填入 sk- 开头的 Key 并保存。", "warn");
+      openSettings();
+      return;
+    }
+
+    ideaState.busyId = "__new__";
+    $("btnSaveIdea").disabled = true;
+    setStatus(status, "正在让 AI 归类，通常需要 5~20 秒…", "busy");
+
+    callDeepSeek(PROMPT_IDEA_SYSTEM, buildIdeaUserContent(text)).then(function (reply) {
+      var parsed = parseIdeaJson(reply);
+      addIdea(text, parsed);
+      if (parsed) {
+        setStatus(status, "已归类为「" + normalizeIdeaType(parsed.type) + "」。", "ok");
+        showToast("已保存");
+      } else {
+        setStatus(status, "归类失败，已保存原文（可在想法库里点“重新归类”再试）。", "warn");
+        showToast("归类失败，已保存原文", true);
+      }
+      ta.value = "";
+      ta.style.height = "";
+      // 确保新想法所在的组是展开的，用户能立刻看到
+      var latest = ideasGet()[0];
+      if (latest) ideaState.open[latest.type] = true;
+      renderIdeas();
+    }).catch(function (err) {
+      setStatus(status, (err.message || "归类失败") + "（这条想法没有保存，请修正后再点一次）", "err");
+      if (err.code === "no-key" || err.code === "bad-key") openSettings();
+    }).then(function () {
+      ideaState.busyId = "";
+      $("btnSaveIdea").disabled = false;
+    });
+  }
+
+  // 单条重新归类
+  function reclassifyIdea(id) {
+    if (ideaState.busyId) return;
+    var arr = ideasGet();
+    var idx = -1;
+    for (var i = 0; i < arr.length; i++) { if (arr[i].id === id) { idx = i; break; } }
+    if (idx < 0) return;
+    if (!store.getKey()) {
+      setStatus($("ideaBatchStatus"), "还没有填 API Key。点右上角设置。", "warn");
+      openSettings();
+      return;
+    }
+    var target = arr[idx];
+    ideaState.busyId = id;
+    renderIdeas();
+    setStatus($("ideaBatchStatus"), "正在重新归类这条想法…", "busy");
+
+    callDeepSeek(PROMPT_IDEA_SYSTEM, buildIdeaUserContent(target.text)).then(function (reply) {
+      var parsed = parseIdeaJson(reply);
+      var list = ideasGet();
+      for (var j = 0; j < list.length; j++) {
+        if (list[j].id !== id) continue;
+        if (parsed) {
+          list[j].type = normalizeIdeaType(parsed.type);
+          list[j].tags = normalizeTags(parsed.tags);
+          list[j].actionable = normalizeActionable(parsed.actionable);
+          list[j].summary = normalizeSummary(parsed.summary, list[j].text);
+          list[j].ts = Date.now();          // 重新归类后算作最新
+          list[j].date = nowStamp().date;
+        } else {
+          list[j].type = "未分类";
+        }
+        break;
+      }
+      ideasSave(list);
+      if (parsed) {
+        setStatus($("ideaBatchStatus"), "已重新归类。", "ok");
+        showToast("已重新归类");
+      } else {
+        setStatus($("ideaBatchStatus"), "归类失败，这条已标为“未分类”，可稍后再试。", "warn");
+        showToast("归类失败，已保存原文", true);
+      }
+      if (parsed) {
+        var cur = null;
+        ideasGet().forEach(function (x) { if (x.id === id) cur = x; });
+        if (cur) ideaState.open[cur.type] = true;
+      }
+      renderIdeas();
+    }).catch(function (err) {
+      setStatus($("ideaBatchStatus"), err.message || "重新归类失败，请稍后重试。", "err");
+      renderIdeas();
+    }).then(function () {
+      ideaState.busyId = "";
+      renderIdeas();
+    });
+  }
+
+  // 批量把某一类（默认“未分类”）的想法重新归类（一条一条来，避免同时发太多请求）
+  function reclassifyAllUncategorized(whichType) {
+    var which = whichType || "未分类";
+    if (ideaState.busyId || ideaState.busyAll) return;
+    if (!store.getKey()) {
+      setStatus($("ideaBatchStatus"), "还没有填 API Key。点右上角设置。", "warn");
+      openSettings();
+      return;
+    }
+    var pending = ideasGet().filter(function (x) { return (x.type || "未分类") === which; });
+    if (!pending.length) {
+      setStatus($("ideaBatchStatus"), "没有「" + which + "」的想法，不用重新归类。", "ok");
+      return;
+    }
+    if (!confirm("有 " + pending.length + " 条「" + which + "」的想法，将逐条调用 AI 重新归类，确定开始吗？")) return;
+
+    ideaState.busyAll = true;
+    $("btnReclassAll").disabled = true;
+    var done = 0, ok = 0, fail = 0;
+
+    var step = function () {
+      if (done >= pending.length) {
+        if (done > 0) {
+          setStatus($("ideaBatchStatus"), "批量归类结束：成功 " + ok + " 条，失败 " + fail + " 条。", fail ? "warn" : "ok");
+          showToast("批量归类结束");
+        }
+        ideaState.busyAll = false;
+        $("btnReclassAll").disabled = false;
+        renderIdeas();
+        return;
+      }
+      var cur = pending[done];
+      setStatus($("ideaBatchStatus"), "正在归类 " + (done + 1) + "/" + pending.length + "…", "busy");
+      callDeepSeek(PROMPT_IDEA_SYSTEM, buildIdeaUserContent(cur.text)).then(function (reply) {
+        var parsed = parseIdeaJson(reply);
+        var list = ideasGet();
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].id !== cur.id) continue;
+          if (parsed) {
+            list[i].type = normalizeIdeaType(parsed.type);
+            list[i].tags = normalizeTags(parsed.tags);
+            list[i].actionable = normalizeActionable(parsed.actionable);
+            list[i].summary = normalizeSummary(parsed.summary, list[i].text);
+            list[i].ts = Date.now();
+            list[i].date = nowStamp().date;
+            ok++;
+          } else {
+            fail++;
+          }
+          break;
+        }
+        ideasSave(list);
+      }).catch(function () {
+        fail++;
+      }).then(function () {
+        done++;
+        renderIdeas();
+        setTimeout(step, 350);       // 稍微停顿，避免触发频率限制
+      });
+    };
+    step();
+  }
+
+  // 改写原文（原文写错字时用，不重新调 AI）
+  function startEditIdea(id) {
+    ideaState.editingId = id;
+    renderIdeas();
+  }
+  function cancelEditIdea() {
+    ideaState.editingId = "";
+    renderIdeas();
+  }
+  function saveEditIdea(id) {
+    var ta = document.getElementById("ideaEdit-" + id);
+    if (!ta) return;
+    var v = String(ta.value || "").trim();
+    if (!v) { showToast("原文不能为空", true); return; }
+    var list = ideasGet();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        list[i].text = v;
+        if (!list[i].summary || list[i].type === "未分类") list[i].summary = normalizeSummary("", v);
+        break;
+      }
+    }
+    ideasSave(list);
+    ideaState.editingId = "";
+    renderIdeas();
+    showToast("原文已修改");
+  }
+
+  function deleteIdea(id) {
+    var arr = ideasGet();
+    var target = null;
+    for (var i = 0; i < arr.length; i++) { if (arr[i].id === id) target = arr[i]; }
+    if (!target) return;
+    if (!confirm("确定删除这条想法吗？\n\n" + target.text)) return;
+    ideasSave(arr.filter(function (x) { return x.id !== id; }));
+    renderIdeas();
+    showToast("已删除");
+  }
+
+  function ideaMatch(item, q) {
+    if (!q) return true;
+    var s = q.toLowerCase();
+    var hay = [
+      item.text || "", item.type || "", item.summary || "",
+      (item.tags || []).join(" "), item.actionable || "", item.date || ""
+    ].join(" ").toLowerCase();
+    return hay.indexOf(s) >= 0;
+  }
+
+  function chip(t, cls) {
+    var e = document.createElement("span");
+    e.className = "chip" + (cls ? " " + cls : "");
+    e.textContent = t;
+    return e;
+  }
+
+  function actionClass(a) {
+    if (a === "现在能做") return "act-now";
+    if (a === "以后能做") return "act-later";
+    return "act-someday";
+  }
+
+  // 渲染一条想法
+  function renderIdeaItem(item) {
+    var box = document.createElement("div");
+    box.className = "idea-item";
+    box.setAttribute("data-idea-id", item.id);
+
+    // 原文（编辑状态下换成输入框）
+    if (ideaState.editingId === item.id) {
+      var ta = document.createElement("textarea");
+      ta.className = "idea-edit";
+      ta.id = "ideaEdit-" + item.id;
+      ta.value = item.text || "";
+      ta.maxLength = 500;
+      box.appendChild(ta);
+      var eb = document.createElement("div");
+      eb.className = "idea-ops";
+      var bSave = document.createElement("button");
+      bSave.className = "btn small primary";
+      bSave.textContent = "保存原文";
+      bSave.addEventListener("click", function () { saveEditIdea(item.id); });
+      var bCancel = document.createElement("button");
+      bCancel.className = "btn small ghost";
+      bCancel.textContent = "取消";
+      bCancel.addEventListener("click", cancelEditIdea);
+      eb.appendChild(bSave);
+      eb.appendChild(bCancel);
+      box.appendChild(eb);
+      return box;
+    }
+
+    var t = document.createElement("div");
+    t.className = "idea-text";
+    t.textContent = item.text || "";
+    box.appendChild(t);
+
+    if (item.summary) {
+      var sm = document.createElement("div");
+      sm.className = "idea-sum";
+      sm.textContent = "摘要：" + item.summary;
+      box.appendChild(sm);
+    }
+
+    var meta = document.createElement("div");
+    meta.className = "idea-meta";
+    meta.appendChild(chip("类型：" + (item.type || "未分类"), item.type === "未分类" ? "uncat" : ""));
+    (item.tags || []).forEach(function (g) { meta.appendChild(chip("#" + g)); });
+    meta.appendChild(chip("可执行性：" + (item.actionable || "只是想想"), actionClass(item.actionable)));
+    meta.appendChild(chip(String(item.date || "")));
+    box.appendChild(meta);
+
+    var ops = document.createElement("div");
+    ops.className = "idea-ops";
+
+    var bRe = document.createElement("button");
+    bRe.className = "btn small";
+    bRe.textContent = (ideaState.busyId === item.id) ? "归类中…" : "重新归类";
+    bRe.disabled = !!ideaState.busyId || ideaState.busyAll;
+    bRe.addEventListener("click", function () { reclassifyIdea(item.id); });
+    ops.appendChild(bRe);
+
+    var bEdit = document.createElement("button");
+    bEdit.className = "btn small ghost";
+    bEdit.textContent = "改写原文";
+    bEdit.addEventListener("click", function () { startEditIdea(item.id); });
+    ops.appendChild(bEdit);
+
+    var bDel = document.createElement("button");
+    bDel.className = "btn small ghost";
+    bDel.textContent = "删除";
+    bDel.style.color = "#ff5b72";
+    bDel.disabled = !!ideaState.busyId;
+    bDel.addEventListener("click", function () { deleteIdea(item.id); });
+    ops.appendChild(bDel);
+
+    box.appendChild(ops);
+    return box;
+  }
+
+  function renderIdeas() {
+    var box = $("ideaGroups");
+    if (!box) return;
+    var all = ideasGet();
+    var q = ideaState.query.trim();
+    var shown = all.filter(function (x) { return ideaMatch(x, q); });
+
+    box.innerHTML = "";
+
+    // 按类型分组：类型顺序固定，组内按时间倒序（数据本身已倒序）
+    var groups = {};
+    IDEA_TYPES.forEach(function (tp) { groups[tp] = []; });
+    shown.forEach(function (x) {
+      var tp = x.type || "未分类";
+      if (!groups[tp]) groups[tp] = [];
+      groups[tp].push(x);
+    });
+
+    var groupKeys = IDEA_TYPES.filter(function (tp) { return groups[tp] && groups[tp].length; });
+    Object.keys(groups).forEach(function (tp) {
+      if (groupKeys.indexOf(tp) < 0 && groups[tp].length) groupKeys.push(tp);
+    });
+
+    groupKeys.forEach(function (tp) {
+      var list = groups[tp];
+      var wrap = document.createElement("div");
+      var isOpen = (q ? true : !!ideaState.open[tp]);      // 搜索时强制展开，方便看结果
+      wrap.className = "idea-group" + (isOpen ? " open" : "");
+      wrap.setAttribute("data-type", tp);
+
+      var head = document.createElement("button");
+      head.type = "button";
+      head.className = "idea-group-head";
+      var arrow = document.createElement("span");
+      arrow.className = "idea-group-arrow";
+      arrow.textContent = "";
+      head.appendChild(arrow);
+      var name = document.createElement("span");
+      name.textContent = tp;
+      head.appendChild(name);
+      var cnt = document.createElement("span");
+      cnt.className = "idea-group-count";
+      cnt.textContent = list.length + " 条";
+      head.appendChild(cnt);
+      head.addEventListener("click", function () {
+        ideaState.open[tp] = !wrap.classList.contains("open");
+        wrap.classList.toggle("open");
+      });
+      wrap.appendChild(head);
+
+      var body = document.createElement("div");
+      body.className = "idea-group-body";
+      list.forEach(function (it) { body.appendChild(renderIdeaItem(it)); });
+      wrap.appendChild(body);
+      box.appendChild(wrap);
+    });
+
+    $("ideaEmpty").style.display = shown.length ? "none" : "block";
+    $("ideaEmpty").textContent = all.length
+      ? ("没有匹配“" + q + "”的想法。")
+      : "还没有想法。在上面写一句，点“保存并归类”，AI 会帮你按类型归档。";
+    $("ideaCount").textContent = "共 " + all.length + " 条";
+    $("ideaLibCount").textContent = q ? (shown.length + " / " + all.length + " 条") : (all.length + " / " + IDEA_MAX + " 条");
+    var uncat = all.filter(function (x) { return x.type === "未分类"; }).length;
+    var others = all.filter(function (x) { return x.type === "其他"; }).length;
+    $("btnReclassAll").textContent = "重新归类（未分类 " + uncat + "）";
+    $("btnReclassOthers").textContent = "重新归类（其他 " + others + "）";
+  }
+
+  /* ★新增模块结束 */
+
+  function renderCounts() {
+    var h = store.getHistory().length;
+    var w = store.getWeekly().length;
+    $("histCount").textContent = h + "/" + HIST_MAX + " 条";
+    $("weekCountHint").textContent = "可用 " + Math.min(h, 7) + " 天 / 至少 " + WEEK_MIN_DAYS + " 天";
+    $("statHist").textContent = h + " 条";
+    $("statWeek").textContent = w + " 条";
+  }
+
+  /* =============== 今日总结结果展示 =============== */
+  function renderDailyResult() {
+    var card = $("dailyResultCard");
+    var text = state.day.summary || "";
+    if (!text) { card.hidden = true; return; }
+    card.hidden = false;
+    $("dailyResult").textContent = text;
+    $("dailyResultTime").textContent = state.day.summaryAt ? ("生成于 " + fmtTime(state.day.summaryAt)) : "";
+    $("dailyCopyTip").className = "copy-timeout";
+  }
+
+  function renderWeeklyResult() {
+    var list = store.getWeekly();
+    var card = $("weeklyResultCard");
+    if (!list.length) { card.hidden = true; return; }
+    var latest = list[0];
+    card.hidden = false;
+    $("weeklyResult").textContent = latest.text || "";
+    $("weeklyResultTime").textContent = latest.time ? fmtTime(latest.time) : "";
+    $("weeklyCopyTip").className = "copy-timeout";
+  }
+
+  function fmtTime(iso) {
+    try {
+      var d = new Date(iso);
+      return (d.getMonth() + 1) + "月" + d.getDate() + "日 " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+    } catch (e) { return ""; }
+  }
+
+  /* =============== 拼装数据给 AI =============== */
+  function dayToPlain(day, withDate) {
+    var lines = [];
+    if (withDate) {
+      lines.push("日期：" + day.date + "（" + weekdayCN(day.date) + "）");
+    }
+    SLOTS.forEach(function (s) {
+      var v = day.slots[s.id] || { text: "", energy: 0, mood: 0 };
+      var txt = String(v.text || "").trim();
+      lines.push("[" + s.name + "]");
+      lines.push("  记录：" + (txt || "未填写"));
+      lines.push("  精力：" + (v.energy > 0 ? v.energy + "/5" : "未填") + "　情绪：" + (v.mood > 0 ? v.mood + "/5" : "未填"));
+    });
+    return lines.join("\n");
+  }
+
+  function buildDailyData(day) {
+    return dayToPlain(day, true);
+  }
+
+  function buildWeekData(history) {
+    var picked = history.slice(0, 7).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var lines = [];
+    lines.push("本次共 " + picked.length + " 天记录（按日期从早到晚）：");
+    lines.push("");
+    picked.forEach(function (d, i) {
+      lines.push("=== 第 " + (i + 1) + " 天 ===");
+      lines.push(dayToPlain(d, true));
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+
+  /* =============== 调用 DeepSeek =============== */
+  function callDeepSeek(systemPrompt, userContent) {
+    var key = store.getKey();
+    if (!key) {
+      return Promise.reject(new ApiError("no-key", "还没有填 API Key。点右上角设置，粘贴 sk- 开头的 Key 后保存。"));
+    }
+    if (!/^sk-[A-Za-z0-9_\-]{10,}$/.test(key)) {
+      return Promise.reject(new ApiError("bad-key", "API Key 格式好像不对（应以 sk- 开头）。请到右上角重新粘贴，注意不要带空格或引号。"));
+    }
+
+    var controller = null;
+    var timer = null;
+    try { controller = new AbortController(); } catch (e) { controller = null; }
+
+    var req = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + key
+      },
+      body: JSON.stringify({
+        model: store.getModel(),
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent }
+        ],
+        temperature: 0.6,
+        max_tokens: 4000,
+        stream: false
+      })
+    };
+    if (controller) req.signal = controller.signal;
+
+    var timeoutP = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        if (controller) { try { controller.abort(); } catch (e) {} }
+        reject(new ApiError("timeout", "请求超时（超过 " + Math.round(TIMEOUT_MS / 1000) + " 秒）。可能是网络较慢，请换个网络再试一次。"));
+      }, TIMEOUT_MS);
+    });
+
+    var fetchP;
+    try {
+      fetchP = fetch(API_URL, req);
+    } catch (e) {
+      clearTimeout(timer);
+      return Promise.reject(new ApiError("cors", "浏览器挡住了这次请求（CORS / 网络不可达）。请检查网络，或换手机自带浏览器打开本页。"));
+    }
+
+    var work = fetchP.then(function (res) {
+      if (res.status === 401 || res.status === 403) {
+        throw new ApiError("401", "API Key 无效或已失效（HTTP " + res.status + "）。请到右上角重新填一个正确的 Key。");
+      }
+      if (res.status === 402) {
+        throw new ApiError("402", "账户余额不足（HTTP 402）。请去 DeepSeek 开放平台充值后再试。");
+      }
+      if (res.status === 429) {
+        throw new ApiError("429", "请求太频繁或额度用完了（HTTP 429）。等 1 分钟再试。");
+      }
+      if (res.status >= 500) {
+        throw new ApiError("5xx", "DeepSeek 服务器暂时出问题（HTTP " + res.status + "）。过几分钟再试。");
+      }
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          var msg = "";
+          try { msg = JSON.parse(t).error.message || ""; } catch (e) {}
+          throw new ApiError("http", "请求失败（HTTP " + res.status + "）" + (msg ? "：" + msg : "。"));
+        });
+      }
+      return res.json();
+    }).then(function (json) {
+      var choice = json && json.choices && json.choices[0];
+      var content = choice && choice.message && choice.message.content;
+      var text = cleanText(content || "");
+      if (!text) {
+        throw new ApiError("empty", "服务器返回了空内容。请点一次重试；如果一直这样，到“设置”里把模型名换成 deepseek-chat。");
+      }
+      return text;
+    }).catch(function (err) {
+      if (err instanceof ApiError) throw err;
+      var name = err && err.name ? err.name : "";
+      if (name === "AbortError") {
+        throw new ApiError("timeout", "请求超时，已取消。请检查网络后重试。");
+      }
+      if (name === "TypeError" || /Failed to fetch|NetworkError|Load failed/i.test(String(err && err.message))) {
+        throw new ApiError("cors", "连不上 DeepSeek（网络不通或被浏览器拦下，常见原因：CORS、离线、用了不支持的浏览器）。请检查：① 手机能打开网页吗；② 关掉广告拦截/代理再试；③ 换 Safari 或 Chrome 打开本页。");
+      }
+      throw new ApiError("unknown", "请求出错：" + (err && err.message ? err.message : "未知错误"));
+    });
+
+    return Promise.race([work, timeoutP]).then(function (t) {
+      clearTimeout(timer);
+      return t;
+    }, function (e) {
+      clearTimeout(timer);
+      throw e;
+    });
+  }
+
+  function ApiError(code, message) {
+    this.code = code;
+    this.message = message;
+  }
+  ApiError.prototype = Object.create(Error.prototype);
+
+  function cleanText(s) {
+    var t = String(s || "");
+    t = t.replace(/\r\n/g, "\n");
+    t = t.replace(/```[a-zA-Z]*\n?/g, "");      // 去掉代码块围栏
+    t = t.replace(/\*\*(.+?)\*\*/g, "$1");       // 去掉加粗符号
+    t = t.replace(/^#{1,6}\s+/gm, "");           // 去掉标题井号
+    t = t.replace(/\n{4,}/g, "\n\n\n");
+    return t.trim();
+  }
+
+  /* =============== 今日总结 =============== */
+  function onGenerateDaily() {
+    if (state.busyDaily) return;
+    var status = $("dailyStatus");
+
+    var hasAny = false;
+    SLOTS.forEach(function (s) {
+      var v = state.day.slots[s.id];
+      if (String(v.text || "").trim() || v.energy > 0 || v.mood > 0) hasAny = true;
+    });
+    if (!hasAny) {
+      setStatus(status, "这一天还什么都没填。请在下面四个时段里至少写一句话或点选分数。", "warn");
+      return;
+    }
+    if (!store.getKey()) {
+      setStatus(status, "还没有填 API Key。点右上角设置，填入 sk- 开头的 Key 并保存。", "warn");
+      openSettings();
+      return;
+    }
+
+    saveDay(true);
+
+    var data = buildDailyData(state.day);
+    var prompt = PROMPT_DAILY.replace("{{DATA}}", data);
+    state.busyDaily = true;
+    $("btnDaily").disabled = true;
+    setStatus(status, "正在生成今日总结，通常需要 10~40 秒…", "busy");
+
+    callDeepSeek(PROMPT_DAILY, prompt).then(function (text) {
+      state.day.summary = text;
+      state.day.summaryAt = new Date().toISOString();
+      store.upsertDay(state.day);
+      renderDailyResult();
+      renderHistory();
+      setStatus(status, "生成完成，已保存到本日记录。", "ok");
+      showToast("今日总结已生成");
+      $("dailyResultCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (err) {
+      setStatus(status, err.message || "生成失败，请稍后重试。", "err");
+      if (err.code === "no-key" || err.code === "bad-key") openSettings();
+    }).then(function () {
+      state.busyDaily = false;
+      $("btnDaily").disabled = false;
+    });
+  }
+
+  /* =============== 本周分析 =============== */
+  function onGenerateWeekly() {
+    if (state.busyWeekly) return;
+    var status = $("weeklyStatus");
+    var history = store.getHistory();
+
+    if (history.length < WEEK_MIN_DAYS) {
+      setStatus(status, "至少记录 " + WEEK_MIN_DAYS + " 天才可以做周分析。现在只有 " + history.length + " 天，先去补几天吧。", "warn");
+      return;
+    }
+    if (!store.getKey()) {
+      setStatus(status, "还没有填 API Key。点右上角设置，填入 sk- 开头的 Key 并保存。", "warn");
+      openSettings();
+      return;
+    }
+
+    var data = buildWeekData(history);
+    var prompt = PROMPT_WEEK.replace("{{DATA}}", data);
+    state.busyWeekly = true;
+    $("btnWeekly").disabled = true;
+    setStatus(status, "正在分析最近 " + Math.min(history.length, 7) + " 天记录，通常需要 20~60 秒…", "busy");
+
+    callDeepSeek(PROMPT_WEEK, prompt).then(function (text) {
+      var item = {
+        id: uid(),
+        time: new Date().toISOString(),
+        days: Math.min(history.length, 7),
+        range: (function () {
+          var p = history.slice(0, 7).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+          return p[0].date + " ~ " + p[p.length - 1].date;
+        })(),
+        text: text
+      };
+      store.addWeekly(item);
+      renderWeeklyResult();
+      renderCounts();
+      setStatus(status, "分析完成，已保存（周报最多保留 " + WEEK_MAX + " 条）。", "ok");
+      showToast("本周分析已生成");
+      $("weeklyResultCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (err) {
+      setStatus(status, err.message || "生成失败，请稍后重试。", "err");
+      if (err.code === "no-key" || err.code === "bad-key") openSettings();
+    }).then(function () {
+      state.busyWeekly = false;
+      $("btnWeekly").disabled = false;
+    });
+  }
+
+  /* =============== 复制待办 =============== */
+  // 只提取 Markdown 待办行（- [ ] xxx），其他行一律丢弃
+  function extractTodoLines(text) {
+    var lines = String(text || "").split(/\r?\n/);
+    var out = [];
+    var RE = /^[-*]\s*\[\s*\]\s*/;   // 只认 “- [ ]” 开头的行
+    lines.forEach(function (ln) {
+      var t = ln.replace(/\u00a0/g, " ").trim();
+      if (RE.test(t)) {
+        var task = t.replace(new RegExp(RE.source), "").trim();
+        if (task) out.push("- [ ] " + task);
+      }
+    });
+    return out.join("\n");
+  }
+
+  function copyText(textValue, tipEl) {
+    var text = String(textValue || "");
+    var done = function () {
+      if (tipEl) tipEl.className = "copy-timeout";
+      showToast("已复制到剪贴板");
+    };
+    var fail = function () {
+      if (tipEl) tipEl.className = "copy-timeout show";
+      // 先给用户一个可见的降级框，再提示（提示要最后弹，否则会被覆盖）
+      $("copyArea").value = text;
+      $("copyMask").classList.remove("hidden");
+      showToast("自动复制被浏览器拦下了，请长按下面的文字手动复制", true);
+    };
+
+    // 剪贴板接口的 Promise 在部分浏览器（含无头/无权限环境）会一直不 resolve，
+    // 所以给一个 1.2 秒的兜底计时：没等到结果就自动走降级方案，避免点了没反应。
+    var settled = false;
+    var finish = function (fn) {
+      return function () {
+        if (settled) return;
+        settled = true;
+        fn();
+      };
+    };
+    var doneOnce = finish(done);
+    var failOnce = finish(fail);
+    var timer = setTimeout(function () { failOnce(); }, 1200);
+
+    if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+      var p = null;
+      try { p = navigator.clipboard.writeText(text); } catch (e) { p = null; }
+      if (p && typeof p.then === "function") {
+        p.then(function () { clearTimeout(timer); doneOnce(); },
+               function () { clearTimeout(timer); legacyCopy(text, doneOnce, failOnce); });
+        return;
+      }
+    }
+    clearTimeout(timer);
+    legacyCopy(text, doneOnce, failOnce);
+  }
+
+  function legacyCopy(text, done, fail) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (ok) done(); else fail();
+    } catch (e) {
+      fail();
+    }
+  }
+
+  /* =============== 设置弹窗 =============== */
+  function openSettings() {
+    $("apiKeyInput").value = store.getKey();
+    $("modelInput").value = store.getModel();
+    $("keyStatus").className = "status";
+    $("keyStatus").textContent = "";
+    $("miscStatus").className = "status";
+    $("miscStatus").textContent = "";
+    $("statSize").textContent = estSize();
+    renderCounts();
+    $("settingsMask").classList.remove("hidden");
+  }
+  function closeSettings() {
+    $("settingsMask").classList.add("hidden");
+  }
+  function estSize() {
+    try {
+      var n = 0;
+      for (var k in localStorage) {
+        if (Object.prototype.hasOwnProperty.call(localStorage, k)) {
+          n += (localStorage.getItem(k) || "").length + k.length;
+        }
+      }
+      return (n / 1024).toFixed(1) + " KB";
+    } catch (e) { return "未知"; }
+  }
+
+  function saveSettings() {
+    var k = $("apiKeyInput").value.trim();
+    var m = $("modelInput").value.trim() || DEFAULT_MODEL;
+    if (k && !/^sk-[A-Za-z0-9_\-]{10,}$/.test(k)) {
+      setStatus($("keyStatus"), "这个 Key 看起来不对：应以 sk- 开头，且中间没有空格。请重新复制。", "err");
+      return;
+    }
+    store.setKey(k);
+    store.setModel(m);
+    refreshKeyDot();
+    setStatus($("keyStatus"), k ? "已保存。可以点“测试连接”验证一下。" : "已保存（Key 为空）。", "ok");
+    showToast("设置已保存");
+    closeSettings();
+  }
+
+  function testKey() {
+    var k = $("apiKeyInput").value.trim();
+    if (!k) {
+      setStatus($("keyStatus"), "请先粘贴 API Key。", "warn");
+      return;
+    }
+    store.setKey(k);
+    store.setModel($("modelInput").value.trim() || DEFAULT_MODEL);
+    refreshKeyDot();
+    setStatus($("keyStatus"), "正在测试连接…", "busy");
+    $("btnTestKey").disabled = true;
+    callDeepSeek("你是一个回声机器人。", "只回复两个字：正常").then(function (t) {
+      setStatus($("keyStatus"), "连接成功！模型回复：" + t.slice(0, 30), "ok");
+    }).catch(function (err) {
+      setStatus($("keyStatus"), "连接失败：" + err.message, "err");
+    }).then(function () {
+      $("btnTestKey").disabled = false;
+    });
+  }
+
+  function refreshKeyDot() {
+    $("keyDot").className = "key-dot" + (store.getKey() ? " on" : "");
+  }
+
+  /* =============== 导入导出 / 清空 =============== */
+  function exportBackup() {
+    var data = {
+      exportedAt: new Date().toISOString(),
+      history: store.getHistory(),
+      weekly: store.getWeekly()
+    };
+    $("copyArea").value = JSON.stringify(data);
+    $("copyMask").classList.remove("hidden");
+    setStatus($("miscStatus"), "备份已生成，在弹出的框里长按复制，存到备忘录或发给自己。", "ok");
+  }
+
+  function importBackup() {
+    var raw = prompt("把之前备份的 JSON 全部粘贴到这里，然后点确定：", "");
+    if (!raw) return;
+    var obj;
+    try { obj = JSON.parse(raw); } catch (e) {
+      setStatus($("miscStatus"), "导入失败：内容不是有效的备份格式。", "err");
+      return;
+    }
+    if (!obj || !Array.isArray(obj.history)) {
+      setStatus($("miscStatus"), "导入失败：备份里没有 history 字段。", "err");
+      return;
+    }
+    if (!confirm("导入将覆盖当前的历史记录（" + store.getHistory().length + " 条）和周报，确定继续吗？")) return;
+    store.saveHistory(obj.history);
+    if (Array.isArray(obj.weekly)) lsSet(LS.WEEK, obj.weekly.slice(0, WEEK_MAX));
+    loadDate(state.date);
+    renderCounts();
+    setStatus($("miscStatus"), "导入成功：历史 " + store.getHistory().length + " 条，周报 " + store.getWeekly().length + " 条。", "ok");
+  }
+
+  function wipeAll() {
+    if (!confirm("确定清空全部数据吗？历史记录、周报、API Key、想法库都会被删除，且无法恢复。")) return;
+    if (!confirm("再确认一次：真的要全部清空？")) return;
+    localStorage.removeItem(LS.HIST);
+    localStorage.removeItem(LS.WEEK);
+    localStorage.removeItem(LS.KEY);
+    localStorage.removeItem(LS.MODEL);
+    localStorage.removeItem(LS.IDEAS);          // ★新增：想法库一起清空
+    refreshKeyDot();
+    loadDate(state.date);
+    renderCounts();
+    renderWeeklyResult();
+    renderIdeas();                              // ★新增
+    setStatus($("miscStatus"), "已全部清空。", "ok");
+  }
+
+  /* =============== 事件绑定 =============== */
+  function bindEvents() {
+    $("btnSettings").addEventListener("click", openSettings);
+    $("btnCloseSettings").addEventListener("click", closeSettings);
+    $("btnSaveSettings").addEventListener("click", saveSettings);
+    $("btnToggleKey").addEventListener("click", function () {
+      var i = $("apiKeyInput");
+      i.type = (i.type === "password") ? "text" : "password";
+    });
+    $("btnTestKey").addEventListener("click", testKey);
+    $("btnClearKey").addEventListener("click", function () {
+      $("apiKeyInput").value = "";
+      store.setKey("");
+      refreshKeyDot();
+      setStatus($("keyStatus"), "Key 已清除。", "ok");
+    });
+    $("settingsMask").addEventListener("click", function (e) {
+      if (e.target === $("settingsMask")) closeSettings();
+    });
+
+    $("dateInput").addEventListener("change", function () {
+      var v = $("dateInput").value;
+      if (!v) { $("dateInput").value = state.date; return; }
+      loadDate(v);
+    });
+    $("btnToday").addEventListener("click", function () { loadDate(todayStr()); });
+    $("btnYesterday").addEventListener("click", function () { loadDate(shiftDate(todayStr(), -1)); });
+
+    /* ===== ★新增：奇思妙想 事件绑定 ===== */
+    $("btnSaveIdea").addEventListener("click", onSaveIdea);
+    $("ideaText").addEventListener("keydown", function (e) {
+      // Ctrl/Cmd + Enter 也能保存归类，手机上用不到但电脑上方便
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); onSaveIdea(); }
+    });
+    $("ideaSearch").addEventListener("input", function () {
+      ideaState.query = $("ideaSearch").value || "";
+      renderIdeas();
+    });
+    $("ideaSearch").addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { $("ideaSearch").value = ""; ideaState.query = ""; renderIdeas(); }
+    });
+    $("btnReclassAll").addEventListener("click", reclassifyUncat);
+    $("btnReclassOthers").addEventListener("click", reclassifyOthers);
+    $("btnIdeaExpandAll").addEventListener("click", function () {
+      IDEA_TYPES.forEach(function (tp) { ideaState.open[tp] = true; });
+      ideasGet().forEach(function (x) { ideaState.open[x.type || "未分类"] = true; });
+      renderIdeas();
+    });
+    $("btnIdeaCollapseAll").addEventListener("click", function () {
+      ideaState.open = {};
+      renderIdeas();
+    });
+
+    $("btnDaily").addEventListener("click", onGenerateDaily);
+    $("btnWeekly").addEventListener("click", onGenerateWeekly);
+
+    $("btnClearDay").addEventListener("click", function () {
+      if (!confirm("确定清空 " + state.date + " 这一天填的内容吗？")) return;
+      var keepSummary = state.day.summary;
+      state.day = blankDay(state.date);
+      state.day.summary = keepSummary || "";
+      state.day.summaryAt = keepSummary ? state.day.summaryAt : "";
+      store.removeDay(state.date);
+      if (keepSummary) store.upsertDay(state.day);
+      paintAllSlots();
+      renderDailyResult();
+      renderHistory();
+      renderCounts();
+      setStatus($("dailyStatus"), "已清空这一天的记录。", "ok");
+    });
+
+    $("btnCopyTodo").addEventListener("click", function () {
+      copyText(extractTodoLines(state.day.summary), $("dailyCopyTip"));
+    });
+    $("btnCopyWeekTodo").addEventListener("click", function () {
+      var list = store.getWeekly();
+      copyText(extractTodoLines(list.length ? list[0].text : ""), $("weeklyCopyTip"));
+    });
+    $("btnCopyDaily").addEventListener("click", function () { copyText(state.day.summary || "", null); });
+    $("btnCopyWeekly").addEventListener("click", function () {
+      var list = store.getWeekly();
+      copyText(list.length ? list[0].text : "", null);
+    });
+    $("btnHideDaily").addEventListener("click", function () { $("dailyResultCard").hidden = true; });
+    $("btnHideWeekly").addEventListener("click", function () { $("weeklyResultCard").hidden = true; });
+
+    $("btnExport").addEventListener("click", exportBackup);
+    $("btnImport").addEventListener("click", importBackup);
+    $("btnWipe").addEventListener("click", wipeAll);
+
+    $("btnCopyClose").addEventListener("click", function () { $("copyMask").classList.add("hidden"); });
+    $("btnCopyAgain").addEventListener("click", function () {
+      var txt = $("copyArea").value;
+      legacyCopy(txt,
+        function () { $("copyMask").classList.add("hidden"); showToast("已复制到剪贴板"); },
+        function () { showToast("还是不行，请长按文字手动复制", true); }
+      );
+    });
+
+    // 页面切到后台/关闭前，把没来得及保存的内容存下来
+    window.addEventListener("pagehide", function () { saveDay(true); });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") saveDay(true);
+    });
+    window.addEventListener("beforeunload", function () { saveDay(true); });
+  }
+
+  // 暴露给自动化测试（不影响页面功能）
+  window.__pd = {
+    state: state,
+    store: store,
+    ls: LS,
+    extractTodoLines: extractTodoLines,
+    cleanText: cleanText,
+    dayIsEmpty: dayIsEmpty,
+    loadDate: loadDate,
+    saveDay: saveDay,
+    copyText: function (t, el) {
+      try { copyText(t, el); } catch (e) { return "inner:" + e.message + "@" + ((e.stack || "").split("\n")[1] || ""); }
+      return "ok";
+    },
+    callDeepSeek: callDeepSeek,
+    todayStr: todayStr,
+    shiftDate: shiftDate,
+    getElById: function (id) { return $(id); },
+    /* ★新增：想法库测试钩子 */
+    ideas: {
+      list: ideasGet,
+      save: ideasSave,
+      max: function () { return IDEA_MAX; },
+      types: function () { return IDEA_TYPES.slice(); },
+      pool: function () { return IDEA_TAG_POOL.slice(); },
+      actions: function () { return IDEA_ACTIONS.slice(); },
+      systemPrompt: function () { return PROMPT_IDEA_SYSTEM; },
+      parse: parseIdeaJson,
+      normalizeType: normalizeIdeaType,
+      normalizeTags: normalizeTags,
+      normalizeActionable: normalizeActionable,
+      normalizeSummary: normalizeSummary,
+      add: addIdea,
+      render: renderIdeas,
+      state: ideaState,
+      saveBtn: onSaveIdea,
+      reclassify: reclassifyIdea,
+      reclassifyAll: reclassifyAllUncategorized,
+      reclassifyUncat: reclassifyUncat,
+      reclassifyOthers: reclassifyOthers,
+      del: deleteIdea
+    }
+  };
+
+  /* =============== 初始化 =============== */
+  function init() {
+    if (!LS_OK) {
+      showToast("浏览器禁用了本地存储（可能是隐私模式），数据无法保存", true);
+    }
+    buildSlots();
+    bindEvents();
+    refreshKeyDot();
+    var d = todayStr();
+    $("dateInput").max = shiftDate(d, 1);
+    loadDate(d);
+    renderCounts();
+    renderWeeklyResult();
+    renderIdeas();                      // ★新增：渲染想法库
+    if (!store.getKey()) {
+      setTimeout(function () {
+        showToast("第一次使用：点右上角的设置按钮填入 API Key");
+      }, 600);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
