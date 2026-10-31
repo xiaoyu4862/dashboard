@@ -251,6 +251,11 @@
   .chart-legend{display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
   .chart-legend .lg{display:inline-flex;align-items:center;gap:5px}
   .chart-legend .lg-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  /* ===== ★新增加：发送到 Gist 的小按钮样式 ===== */
+  .send-line{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .send-hint{font-size:11.5px;color:var(--muted);line-height:1.5}
+  .send-hint.ok{color:var(--ok)}
+  .send-hint.err{color:var(--err)}
   @media (min-width:600px){
     .card{padding:18px}
     h1{font-size:17px}
@@ -322,6 +327,12 @@
       <button class="btn ghost" id="btnClearDay">清空本日</button>
     </div>
     <div class="status" id="dailyStatus"></div>
+
+    <!-- ★新增加：发送到 Gist（位置就在“生成今日总结”这块区域的下方） -->
+    <div class="send-line">
+      <button class="btn small ghost" id="btnSend">发送</button>
+      <span class="send-hint" id="sendHint"></span>
+    </div>
   </section>
 
   <section class="card" id="dailyResultCard" hidden>
@@ -440,6 +451,19 @@
       <input type="text" id="modelInput" placeholder="deepseek-chat" autocomplete="off" spellcheck="false">
     </div>
 
+    <!-- ★新增加：发送到 Gist 的配置（Gist ID / GitHub Token），同样只存本机 -->
+    <div class="field-block">
+      <label class="field" for="gistIdInput">Gist ID（网页上“发送”按钮用，可留空）</label>
+      <input type="text" id="gistIdInput" placeholder="就是 gist 网址最后那串字母数字" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <label class="field" style="margin-top:12px" for="gistTokenInput">GitHub Token（需有 gist 权限）</label>
+      <input type="password" id="gistTokenInput" placeholder="ghp_... 或 github_pat_..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="row" style="margin-top:8px">
+        <button class="btn small" id="btnToggleGistToken">显示/隐藏</button>
+        <button class="btn small" id="btnTestGist">测试发送</button>
+      </div>
+      <div class="status" id="gistStatus"></div>
+    </div>
+
     <div class="field-block">
       <div class="kv"><span>已存历史记录</span><b id="statHist">0 条</b></div>
       <div class="kv"><span>已存周报</span><b id="statWeek">0 条</b></div>
@@ -489,6 +513,7 @@
   var API_URL = "https://api.deepseek.com/chat/completions";
   var DEFAULT_MODEL = "deepseek-chat";
   var TIMEOUT_MS = 120000;              // 单次请求超时：120 秒
+  var SEND_TIMEOUT_MS = 30000;          // ★新增加：发送到 Gist 的超时：30 秒
   var HIST_MAX = 90;                    // 历史记录最多保留条数
   var WEEK_MAX = 20;                    // 周报最多保留条数
   var WEEK_MIN_DAYS = 3;                // 周分析至少需要的天数
@@ -499,7 +524,9 @@
     HIST: "pd_history",
     WEEK: "pd_weekly",
     IDEAS: "dash_ideas",         // ★新增：想法库
-    MONTH: "dash_month_history"  // ★新增加：月总结历史
+    MONTH: "dash_month_history", // ★新增加：月总结历史
+    GIST_ID: "pd_gist_id",       // ★新增加：Gist ID（存在本机，不写死在代码里）
+    GIST_TOKEN: "pd_gist_token"  // ★新增加：GitHub Token（存在本机，不写死在代码里）
   };
 
   /* ★新增：想法库常量 */
@@ -609,7 +636,7 @@
     "【本周一句话】",
     "  一句话概括",
     "【精力曲线】",
-    "  描述每天的精力数值变化与高低点（直接引用用户分数；没有记录的日子写“未记录”）",
+   "  描述每天的精力数值变化与高低点（直接引用用户分数；没有记录的日子写“未记录”）",
     "【情绪趋势】",
     "  描述情绪的变化趋势、波动与触发点",
     "【压力源排行】",
@@ -716,6 +743,12 @@
     setKey: function (v) { localStorage.setItem(LS.KEY, v); },
     getModel: function () { return (localStorage.getItem(LS.MODEL) || DEFAULT_MODEL).trim() || DEFAULT_MODEL; },
     setModel: function (v) { localStorage.setItem(LS.MODEL, v); },
+
+    /* ★新增加：Gist 的 ID 与 Token（只存本机，不硬编码在代码里） */
+    getGistId: function () { return (localStorage.getItem(LS.GIST_ID) || "").trim(); },
+    setGistId: function (v) { localStorage.setItem(LS.GIST_ID, String(v || "").trim()); },
+    getGistToken: function () { return (localStorage.getItem(LS.GIST_TOKEN) || "").trim(); },
+    setGistToken: function (v) { localStorage.setItem(LS.GIST_TOKEN, String(v || "").trim()); },
 
     getHistory: function () {
       var arr = lsGet(LS.HIST, []);
@@ -2109,6 +2142,132 @@
     });
   }
 
+  /* ===================================================================
+     ★★★ 新增加：发送到私密 Gist ★★★
+     - 把“今天”的总结文本用 PATCH 请求写到 gist 的一个文件里
+     - 请求地址：https://api.github.com/gists/<你的GIST_ID>
+     - 请求体：{"files": {"report.txt": {"content": "总结文本"}}}
+     - Gist ID 和 Token 都存在本机 localStorage，不写死在代码里（换了不会泄露给别人）
+     =================================================================== */
+  var sendState = { busy: false };
+
+  // 取“今天”要发送的文字：优先用今天的总结；没有总结就发今天的原始记录
+  function getTodaySendText() {
+    var day = state.day;
+    if (!day) return "";
+    if (String(day.summary || "").trim()) return String(day.summary);
+    // 没有总结：先判断这天到底有没有填东西；全空就返回空字符串（不生成“未填写”的空壳）
+    if (dayIsEmpty(day)) return "";
+    // 有内容：把今天的记录排成纯文本，避免点了发送却没内容
+    var lines = [];
+    lines.push("日期：" + day.date + "（" + weekdayCN(day.date) + "）");
+    SLOTS.forEach(function (s) {
+      var v = day.slots[s.id] || { text: "", energy: 0, mood: 0 };
+      var txt = String(v.text || "").trim();
+      var sc = [];
+      if (v.energy > 0) sc.push("精力 " + v.energy + "/5");
+      if (v.mood > 0) sc.push("情绪 " + v.mood + "/5");
+      lines.push("");
+      lines.push("【" + s.name + "】" + (txt || "未填写"));
+      if (sc.length) lines.push("  " + sc.join("　"));
+    });
+    return lines.join("\n");
+  }
+
+  function setSendBtn(text, disabledFlag) {
+    var b = $("btnSend");
+    if (b) { b.textContent = text; b.disabled = !!disabledFlag; }
+  }
+
+  function toGistText(raw) {
+    return String(raw || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  }
+
+  function onSendToGist() {
+    var hintEl = $("sendHint");
+    var setHint = function (t, cls) {
+      if (!hintEl) return;
+      hintEl.textContent = t;
+      hintEl.className = "send-hint" + (cls ? " " + cls : "");
+    };
+
+    var gistId = store.getGistId();
+    var token = store.getGistToken();
+    // 还没配置过：直接打开设置让用户填，不去发一个注定失败的请求
+    if (!gistId || !token) {
+      setHint("还没有填 Gist ID 或 GitHub Token。点右上角设置填一下。", "err");
+      openSettings();
+      setStatus($("gistStatus"), "发送前需要先在下面填好 Gist ID 和 GitHub Token。", "warn");
+      return;
+    }
+
+    var text = getTodaySendText();
+    if (!text.trim()) {
+      setHint("今天还没有内容可以发送。", "err");
+      alert("今天还没有内容可以发送。\n先在四个时段里写点什么，或点“生成今日总结”。");
+      return;
+    }
+
+    sendState.busy = true;
+    setSendBtn("发送中...", true);
+    setHint("正在发送到 Gist…");
+
+    var timer = null;
+    var controller = null;
+    try { controller = new AbortController(); } catch (e) { controller = null; }
+
+    var req = {
+      method: "PATCH",
+      headers: {
+        "Authorization": "token " + token,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        files: {
+          "report.txt": { content: toGistText(text) }
+        }
+      })
+    };
+    if (controller) req.signal = controller.signal;
+
+    var timeoutP = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        if (controller) { try { controller.abort(); } catch (e) {} }
+        reject(new Error("请求超时（超过 30 秒）。请检查网络后重试。"));
+      }, SEND_TIMEOUT_MS);
+    });
+
+    var work = fetch("https://api.github.com/gists/" + encodeURIComponent(gistId), req).then(function (res) {
+      if (res.status === 200) return res.json();
+      // 把常见错误码翻译成人话
+      if (res.status === 401) throw new Error("GitHub Token 无效或已过期（HTTP 401）。请到设置里换一个 Token。");
+      if (res.status === 403) throw new Error("没有权限或触发限制（HTTP 403）。请确认 Token 勾选了 gist 权限。");
+      if (res.status === 404) throw new Error("找不到这个 Gist（HTTP 404）。请检查 Gist ID 是否填对。");
+      if (res.status === 422) throw new Error("GitHub 拒绝了这次修改（HTTP 422）。可能 Gist ID 不对。");
+      throw new Error("发送失败（HTTP " + res.status + "）。");
+    });
+
+    Promise.race([work, timeoutP]).then(function () {
+      clearTimeout(timer);
+      sendState.busy = false;
+      setSendBtn("已送达", false);
+      setHint("已发送到 Gist（文件 report.txt）。", "ok");
+      alert("已送达：今天的总结已经发送到你的私密 Gist 了。");
+    }).catch(function (err) {
+      clearTimeout(timer);
+      sendState.busy = false;
+      setSendBtn("发送", false);
+      var msg = (err && err.message) || "发送失败，请稍后重试。";
+      if (err && err.name === "AbortError") msg = "请求超时或已取消，请检查网络后重试。";
+      if (/Failed to fetch|NetworkError|Load failed/i.test(String(err && err.message))) {
+        msg = "连不上 GitHub（网络不通或被浏览器拦下）。请检查网络后重试。";
+      }
+      setHint(msg, "err");
+      alert(msg);
+    });
+  }
+
   /* =============== 复制待办 =============== */
   // 只提取 Markdown 待办行（- [ ] xxx），其他行一律丢弃
   function extractTodoLines(text) {
@@ -2190,6 +2349,11 @@
   function openSettings() {
     $("apiKeyInput").value = store.getKey();
     $("modelInput").value = store.getModel();
+    /* ★新增加：填好上次存下的 Gist ID / Token */
+    $("gistIdInput").value = store.getGistId();
+    $("gistTokenInput").value = store.getGistToken();
+    $("gistStatus").className = "status";
+    $("gistStatus").textContent = "";
     $("keyStatus").className = "status";
     $("keyStatus").textContent = "";
     $("miscStatus").className = "status";
@@ -2225,6 +2389,9 @@
     }
     store.setKey(k);
     store.setModel(m);
+    /* ★新增加：把 Gist ID / Token 一起存下来 */
+    store.setGistId($("gistIdInput").value);
+    store.setGistToken($("gistTokenInput").value);
     refreshKeyDot();
     setStatus($("keyStatus"), k ? "已保存。可以点“测试连接”验证一下。" : "已保存（Key 为空）。", "ok");
     showToast("设置已保存");
@@ -2253,6 +2420,44 @@
 
   function refreshKeyDot() {
     $("keyDot").className = "key-dot" + (store.getKey() ? " on" : "");
+  }
+
+  /* ★新增加：测试 Gist 发送（用设置里刚填的值，立刻发一次看能不能通） */
+  function testGist() {
+    var id = $("gistIdInput").value.trim();
+    var tk = $("gistTokenInput").value.trim();
+    var st = $("gistStatus");
+    if (!id || !tk) {
+      setStatus(st, "请先填 Gist ID 和 GitHub Token。", "warn");
+      return;
+    }
+    store.setGistId(id);
+    store.setGistToken(tk);
+    setStatus(st, "正在测试发送…", "busy");
+    $("btnTestGist").disabled = true;
+    var text = getTodaySendText() || ("测试发送：" + new Date().toLocaleString());
+    fetch("https://api.github.com/gists/" + encodeURIComponent(id), {
+      method: "PATCH",
+      headers: {
+        "Authorization": "token " + tk,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ files: { "report.txt": { content: toGistText(text) } } })
+    }).then(function (res) {
+      if (res.status === 200) {
+        setStatus(st, "发送成功！去 Gist 页面刷新一下就能看到 report.txt。", "ok");
+        return;
+      }
+      if (res.status === 401) throw new Error("Token 无效或已过期（HTTP 401）。");
+      if (res.status === 403) throw new Error("没有权限（HTTP 403）。请确认 Token 勾选了 gist 权限。");
+      if (res.status === 404) throw new Error("找不到 Gist（HTTP 404）。请检查 Gist ID。");
+      throw new Error("发送失败（HTTP " + res.status + "）。");
+    }).catch(function (err) {
+      setStatus(st, "发送失败：" + ((err && err.message) || "网络错误"), "err");
+    }).then(function () {
+      $("btnTestGist").disabled = false;
+    });
   }
 
   /* =============== 导入导出 / 清空 =============== */
@@ -2296,6 +2501,10 @@
     localStorage.removeItem(LS.MODEL);
     localStorage.removeItem(LS.IDEAS);          // ★新增：想法库一起清空
     localStorage.removeItem(LS.MONTH);          // ★新增加：月总结一起清空
+    localStorage.removeItem(LS.GIST_ID);        // ★新增加：Gist 配置一起清空
+    localStorage.removeItem(LS.GIST_TOKEN);     // ★新增加：GitHub Token 一起清空
+    setSendBtn("发送", false);                  // ★新增加：按钮文字复原
+    if ($("sendHint")) { $("sendHint").textContent = ""; $("sendHint").className = "send-hint"; }
     refreshKeyDot();
     loadDate(state.date);
     renderCounts();
@@ -2322,6 +2531,17 @@
       refreshKeyDot();
       setStatus($("keyStatus"), "Key 已清除。", "ok");
     });
+
+    /* ===== ★新增加：发送到 Gist 的事件绑定 ===== */
+    $("btnSend").addEventListener("click", function () {
+      if (sendState.busy) return;          // 防止连点发出两次
+      onSendToGist();
+    });
+    $("btnToggleGistToken").addEventListener("click", function () {
+      var i = $("gistTokenInput");
+      i.type = (i.type === "password") ? "text" : "password";
+    });
+    $("btnTestGist").addEventListener("click", testGist);
     $("settingsMask").addEventListener("click", function (e) {
       if (e.target === $("settingsMask")) closeSettings();
     });
@@ -2499,6 +2719,16 @@
       render: renderMonthlyResult,
       gen: onGenerateMonthly,
       buildData: buildMonthData
+    },
+    /* ★新增加：发送到 Gist 测试钩子 */
+    gist: {
+      send: onSendToGist,
+      text: getTodaySendText,
+      state: sendState,
+      setBtn: setSendBtn,
+      test: testGist,
+      getId: store.getGistId,
+      getToken: store.getGistToken
     }
   };
 
@@ -2518,6 +2748,10 @@
     renderIdeas();                      // ★新增：渲染想法库
     renderMonthlyResult();              // ★新增加：渲染上次的月总结
     renderChart();                      // ★新增加：画趋势折线图
+    if (!store.getGistId() || !store.getGistToken()) {
+      // ★新增加：还没配置 Gist 时，在“发送”旁边写一句很轻的提示（不碍事）
+      if ($("sendHint")) { $("sendHint").textContent = "发送前请到设置里填 Gist ID 和 Token"; $("sendHint").className = "send-hint"; }
+    }
     if (!store.getKey()) {
       setTimeout(function () {
         showToast("第一次使用：点右上角的设置按钮填入 API Key");
