@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="状态仪表盘">
 <meta name="format-detection" content="telephone=no">
 <title>我的状态仪表盘</title>
+<!-- ★新增加：Chart.js（轻量折线图库，从 CDN 加载；加载失败不会影响页面其它功能） -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231b1b1b'/%3E%3Crect x='52' y='52' width='88' height='10' rx='5' fill='%23fff'/%3E%3Crect x='52' y='84' width='64' height='10' rx='5' fill='%23888'/%3E%3Crect x='52' y='116' width='44' height='10' rx='5' fill='%23888'/%3E%3C/svg%3E">
 <style>
   :root{
@@ -235,6 +237,20 @@
   .idea-date{color:var(--muted);font-size:11.5px;margin-left:auto}
   .idea-edit{width:100%;min-height:60px;margin-top:6px}
   .tag-hit{color:#fff;background:#bdbdb8;border-radius:3px}
+  /* ===== ★新增加：趋势图表样式 ===== */
+  .chart-wrap{position:relative;width:100%;height:220px;margin-top:4px}
+  .chart-wrap canvas{width:100% !important;height:220px !important;display:block}
+  .chart-empty{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:20px;font-size:12.5px;color:var(--muted);
+    background:var(--card2);border-radius:8px;line-height:1.7;
+  }
+  /* 关键：.chart-empty 的 display:flex 会盖掉 hidden 属性自带的 display:none，
+     所以这里必须显式补一条，否则“空提示”会一直压在画布上面挡住折线 */
+  .chart-empty[hidden]{display:none !important}
+  .chart-legend{display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .chart-legend .lg{display:inline-flex;align-items:center;gap:5px}
+  .chart-legend .lg-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
   @media (min-width:600px){
     .card{padding:18px}
     h1{font-size:17px}
@@ -328,7 +344,10 @@
       <span class="sub" id="weekCountHint"></span>
     </div>
     <button class="btn primary grow" id="btnWeekly" style="width:100%;justify-content:center">生成本周分析</button>
+    <!-- ★新增加：本月分析按钮（在“生成本周分析”下面） -->
+    <button class="btn grow" id="btnMonthly" style="width:100%;justify-content:center;margin-top:8px">生成本月分析</button>
     <div class="status" id="weeklyStatus"></div>
+    <div class="status" id="monthlyStatus"></div>
   </section>
 
   <section class="card" id="weeklyResultCard" hidden>
@@ -343,6 +362,43 @@
     </div>
     <div class="copy-timeout" id="weeklyCopyTip">自动复制没成功，已弹出文本框，请长按全选复制。</div>
     <div class="result" id="weeklyResult"></div>
+  </section>
+
+  <!-- ============ ★新增加：本月分析结果卡片 ============ -->
+  <section class="card" id="monthlyResultCard" hidden>
+    <div class="card-head">
+      <div class="card-title">本月分析</div>
+      <span class="sub" id="monthlyResultTime"></span>
+    </div>
+    <div class="row">
+      <button class="btn small" id="btnCopyMonthTodo">复制月待办</button>
+      <button class="btn small" id="btnCopyMonthly">复制全文</button>
+      <button class="btn small ghost" id="btnHideMonthly">收起</button>
+    </div>
+    <div class="copy-timeout" id="monthlyCopyTip">自动复制没成功，已弹出文本框，请长按全选复制。</div>
+    <div class="result" id="monthlyResult"></div>
+    <div class="sub" id="monthlyHistoryHint" style="margin-top:8px"></div>
+  </section>
+
+  <!-- ============ ★新增加：趋势图表（位于“本周分析”和“历史记录”之间） ============ -->
+  <section class="card" id="chartCard">
+    <div class="card-head">
+      <div class="card-title">趋势图表</div>
+      <span class="sub" id="chartHint"></span>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn small" id="btnChartWeek">最近7天</button>
+      <button class="btn small ghost" id="btnChartMonth">最近30天</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="trendChart" height="220"></canvas>
+      <div class="chart-empty" id="chartEmpty" hidden>还没有足够的记录。每天点选“精力 / 情绪”分数后，这里会自动画出折线。</div>
+    </div>
+    <div class="chart-legend">
+      <span class="lg"><i class="lg-dot" style="background:#5f9e6e"></i>精力</span>
+      <span class="lg"><i class="lg-dot" style="background:#5b84c4"></i>情绪</span>
+      <span class="sub" id="chartNote">数值是该时段分数的平均值（1-5）</span>
+    </div>
   </section>
 
   <section class="card">
@@ -387,6 +443,8 @@
     <div class="field-block">
       <div class="kv"><span>已存历史记录</span><b id="statHist">0 条</b></div>
       <div class="kv"><span>已存周报</span><b id="statWeek">0 条</b></div>
+      <!-- ★新增加：月总结条数 -->
+      <div class="kv"><span>已存月总结</span><b id="statMonth">0 条</b></div>
       <div class="kv"><span>浏览器里已用容量</span><b id="statSize">-</b></div>
     </div>
 
@@ -440,7 +498,8 @@
     MODEL: "pd_model",
     HIST: "pd_history",
     WEEK: "pd_weekly",
-    IDEAS: "dash_ideas"          // ★新增：想法库
+    IDEAS: "dash_ideas",         // ★新增：想法库
+    MONTH: "dash_month_history"  // ★新增加：月总结历史
   };
 
   /* ★新增：想法库常量 */
@@ -470,6 +529,30 @@
     { id: "afternoon", emoji: "🌤️", name: "下午" },
     { id: "evening", emoji: "🌙", name: "晚上" }
   ];
+
+  /* ★新增加：月分析 / 折线图 相关常量 */
+  var MONTH_MAX = 12;          // 月总结最多保留 12 条（正好一年）
+  var MONTH_MIN_DAYS = 7;      // 月分析至少需要的天数
+  var MONTH_DAYS = 30;         // 月分析取最近 30 条记录
+
+  /* ★新增加：月分析提示词（内置，不联网取） */
+  var PROMPT_MONTH = [
+    "你是我的个人状态月分析助手。请基于我最近30天的数据做月度复盘。输出纯文本：",
+    "1. 【本月一句话总结】",
+    "2. 【大周期趋势】（精力/情绪的月度变化，比如前半月高后半月低）",
+    "3. 【本月核心压力源】（统计出现频次最高的）",
+    "4. 【高光与低谷】（找出状态最好和最差的几天，并分析原因）",
+    "5. 【下个月核心建议】（只给一个最关键的调整方向）",
+    "6. 【待办清单】（每行以 - [ ] 开头）",
+    "",
+    "规则：不编造，数据不足写“样本不足”。",
+    "另外：用户手填的精力/情绪分数以用户为准，不要修改、不要重算；用户没写的写“未提及”；",
+    "凡是推断得出的结论，句子后面标“（推断）”；不做医疗诊断，不给用药建议；",
+    "只输出纯文本，不要 Markdown 表格、不要代码块、不要加粗符号。",
+    "",
+    "【我的记录】",
+    "{{DATA}}"
+  ].join("\n");
 
   /* =============== 内置提示词（两套） =============== */
   var PROMPT_DAILY = [
@@ -526,7 +609,7 @@
     "【本周一句话】",
     "  一句话概括",
     "【精力曲线】",
-   "  描述每天的精力数值变化与高低点（直接引用用户分数；没有记录的日子写“未记录”）",
+    "  描述每天的精力数值变化与高低点（直接引用用户分数；没有记录的日子写“未记录”）",
     "【情绪趋势】",
     "  描述情绪的变化趋势、波动与触发点",
     "【压力源排行】",
@@ -671,6 +754,19 @@
       var cut = arr.slice(0, WEEK_MAX);
       lsSet(LS.WEEK, cut);
       return cut;
+    },
+
+    /* ★新增加：月总结的读取 / 追加（最多 MONTH_MAX 条，新的在前） */
+    getMonthly: function () {
+      var arr = lsGet(LS.MONTH, []);
+      return Array.isArray(arr) ? arr : [];
+    },
+    addMonthly: function (item) {
+      var arr = store.getMonthly();
+      arr.unshift(item);
+      var cut = arr.slice(0, MONTH_MAX);
+      lsSet(LS.MONTH, cut);
+      return cut;
     }
   };
 
@@ -697,6 +793,7 @@
     day: null,
     busyDaily: false,
     busyWeekly: false,
+    busyMonthly: false,        // ★新增加：月分析是否正在生成
     lastWeeklyText: ""
   };
 
@@ -1471,13 +1568,256 @@
 
   /* ★新增模块结束 */
 
+  /* ===================================================================
+     ★★★ 新增加模块一：趋势折线图（Chart.js）★★★
+     - 数据来源：localStorage 里的 pd_history（每日记录）
+     - 每天两个值：精力、情绪 = 当天四个时段分数的平均值（只算填了的时段）
+     - 一条绿线（精力）、一条蓝线（情绪），Y 轴固定 1-5
+     =================================================================== */
+
+  var ENERGY_COLOR = "#5f9e6e";     // 柔和绿：精力
+  var MOOD_COLOR = "#5b84c4";       // 柔和蓝：情绪
+  var chartState = { days: 7 };     // 当前显示的天数（7 或 30）
+  var trendChart = null;            // Chart.js 实例（重复渲染要先销毁）
+
+  // 算一天的平均分：只统计填了的时段（>0 才计入），都没填返回 null
+  function dayAvgScore(day, kind) {
+    if (!day || !day.slots) return null;
+    var sum = 0, n = 0;
+    SLOTS.forEach(function (s) {
+      var v = day.slots[s.id];
+      if (!v) return;
+      var num = Number(v[kind]);
+      if (num > 0) { sum += num; n++; }
+    });
+    if (!n) return null;
+    return Math.round((sum / n) * 10) / 10;     // 保留一位小数
+  }
+
+  // 取最近 N 天有数据的记录，按日期从早到晚排好
+  function buildChartData(days) {
+    var all = store.getHistory().slice();                 // getHistory 已按日期倒序
+    var picked = all.slice(0, days).slice().sort(function (a, b) {
+      return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
+    });
+    var labels = [], energy = [], mood = [];
+    picked.forEach(function (d) {
+      var e = dayAvgScore(d, "energy");
+      var m = dayAvgScore(d, "mood");
+      if (e === null && m === null) return;               // 只填了文字没填分数的不画点
+      labels.push(d.date.slice(5));                       // 只显示“月-日”，手机上更短
+      energy.push(e);
+      mood.push(m);
+    });
+    return { labels: labels, energy: energy, mood: mood };
+  }
+
+  function renderChart() {
+    var canvas = $("trendChart");
+    var empty = $("chartEmpty");
+    if (!canvas || !empty) return;
+
+    var data = buildChartData(chartState.days);
+    $("chartHint").textContent = "最近 " + chartState.days + " 天";
+    $("btnChartWeek").className = "btn small" + (chartState.days === 7 ? " primary" : " ghost");
+    $("btnChartMonth").className = "btn small" + (chartState.days === 30 ? " primary" : " ghost");
+
+    // 数据不够：显示提示，隐藏画布（0 个点或只有 1 个点画不出“折线”）
+    if (data.labels.length < 2) {
+      empty.hidden = false;
+      canvas.style.display = "none";
+      if (trendChart) { trendChart.destroy(); trendChart = null; }
+      empty.textContent = data.labels.length === 1
+        ? "目前只画得出 1 个点，再记录一天就能连成线了。"
+        : "还没有足够的记录。每天点选“精力 / 情绪”分数后，这里会自动画出折线。";
+      $("chartNote").textContent = "数值是该时段分数的平均值（1-5）";
+      return;
+    }
+    empty.hidden = true;
+    canvas.style.display = "block";
+
+    // Chart.js 没加载出来（比如 CDN 被墙/离线）：不报错，给中文提示
+    if (typeof window.Chart === "undefined") {
+      canvas.style.display = "none";
+      empty.hidden = false;
+      empty.textContent = "图表库没能从网络加载出来（可能网络不稳定或被拦截）。刷新页面再试；如果一直不行，说明这台设备连不上 CDN，但页面其它功能都能正常用。";
+      return;
+    }
+
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+
+    trendChart = new window.Chart(canvas.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            label: "精力",
+            data: data.energy,
+            borderColor: ENERGY_COLOR,
+            backgroundColor: ENERGY_COLOR,
+            borderWidth: 2,
+            tension: 0.35,                 // 轻微圆滑，不夸张
+            spanGaps: true,                // 中间某天没填也能连起来
+            pointRadius: 3,
+            pointHoverRadius: 5
+          },
+          {
+            label: "情绪",
+            data: data.mood,
+            borderColor: MOOD_COLOR,
+            backgroundColor: MOOD_COLOR,
+            borderWidth: 2,
+            tension: 0.35,
+            spanGaps: true,
+            pointRadius: 3,
+            pointHoverRadius: 5
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,                  // 手机上不抖动，响应更快
+        interaction: { mode: "index", intersect: false },
+        layout: { padding: { top: 4, right: 6, left: 0, bottom: 0 } },
+        plugins: {
+          legend: { display: false },      // 页面下方已有自制的图例
+          tooltip: {
+            backgroundColor: "#1b1b1b",
+            titleFont: { size: 12 },
+            bodyFont: { size: 12 },
+            padding: 8,
+            cornerRadius: 6,
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                return ctx.dataset.label + "：" + (v === null || v === undefined ? "没填" : v + " 分");
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { color: "#e6e6e3" },
+            ticks: {
+              color: "#8a8a86",
+              font: { size: 10 },
+              maxRotation: 0,              // 不斜着排，手机上更整齐
+              autoSkip: true,
+              maxTicksLimit: 6             // 标签太多会自动省略
+            }
+          },
+          y: {
+            min: 1,
+            max: 5,
+            ticks: {
+              stepSize: 1,
+              color: "#8a8a86",
+              font: { size: 10 }
+            },
+            grid: { color: "#eeeeec" },
+            border: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  /* ===================================================================
+     ★★★ 新增加模块二：本月分析（月总结）★★★
+     数据存在 localStorage 的 dash_month_history 里，最多 12 条：
+     [{ id, time, days, range, text }]
+     =================================================================== */
+
+  function renderMonthlyResult() {
+    var card = $("monthlyResultCard");
+    if (!card) return;
+    var list = store.getMonthly();
+    if (!list.length) { card.hidden = true; return; }
+    var latest = list[0];
+    card.hidden = false;
+    $("monthlyResult").textContent = latest.text || "";
+    $("monthlyResultTime").textContent = latest.time ? fmtTime(latest.time) : "";
+    $("monthlyCopyTip").className = "copy-timeout";
+    $("monthlyHistoryHint").textContent = "已保存 " + list.length + "/" + MONTH_MAX +
+      " 份月总结" + (latest.range ? "（本次范围 " + latest.range + "）" : "");
+  }
+
+  function onGenerateMonthly() {
+    if (state.busyMonthly) return;
+    var status = $("monthlyStatus");
+    var history = store.getHistory();
+
+    // 数据不够先拦下来
+    if (history.length < MONTH_MIN_DAYS) {
+      setStatus(status, "至少记录 " + MONTH_MIN_DAYS + " 天再做月分析。现在只有 " + history.length + " 天，先去补几天吧。", "warn");
+      return;
+    }
+    // 没填 Key 就弹设置（这条提示不能被后面的统计刷新覆盖）
+    if (!store.getKey()) {
+      setStatus(status, "还没有填 API Key。点右上角设置，填入 sk- 开头的 Key 并保存。", "warn");
+      openSettings();
+      return;
+    }
+
+    var picked = history.slice(0, MONTH_DAYS);        // 最近 30 条
+    var data = buildMonthData(picked);
+    var prompt = PROMPT_MONTH.replace("{{DATA}}", data);
+
+    state.busyMonthly = true;
+    $("btnMonthly").disabled = true;
+    setStatus(status, "正在分析最近 " + picked.length + " 天记录，通常需要 30~70 秒…", "busy");
+
+    callDeepSeek(PROMPT_MONTH, prompt).then(function (text) {
+      var item = {
+        id: uid(),
+        time: new Date().toISOString(),
+        days: picked.length,
+        range: (function () {
+          var p = picked.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+          return p[0].date + " ~ " + p[p.length - 1].date;
+        })(),
+        text: text
+      };
+      store.addMonthly(item);
+      renderMonthlyResult();
+      renderCounts();
+      setStatus(status, "分析完成，已保存（月总结最多保留 " + MONTH_MAX + " 条）。", "ok");
+      showToast("本月分析已生成");
+      $("monthlyResultCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (err) {
+      setStatus(status, err.message || "生成失败，请稍后重试。", "err");
+      if (err.code === "no-key" || err.code === "bad-key") openSettings();
+    }).then(function () {
+      state.busyMonthly = false;
+      $("btnMonthly").disabled = false;
+    });
+  }
+
   function renderCounts() {
     var h = store.getHistory().length;
     var w = store.getWeekly().length;
+    var mo = store.getMonthly().length;              // ★新增加：月总结条数
     $("histCount").textContent = h + "/" + HIST_MAX + " 条";
     $("weekCountHint").textContent = "可用 " + Math.min(h, 7) + " 天 / 至少 " + WEEK_MIN_DAYS + " 天";
     $("statHist").textContent = h + " 条";
     $("statWeek").textContent = w + " 条";
+    if ($("statMonth")) $("statMonth").textContent = mo + " 条";   // ★新增加
+    refreshMonthlyHint();                                        // ★新增加
+  }
+
+  /* ★新增加：把“可用天数 / 至少需要几天”这段提示，单独抽出来，
+     防止别处刷新统计时把“还没填 Key”这类提示覆盖掉 */
+  function refreshMonthlyHint() {
+    var el = $("monthlyStatus");
+    if (!el) return;
+    if (state.busyMonthly) return;          // 正在生成时不要覆盖“正在分析…”
+    var h = store.getHistory().length;
+    el.textContent = h < MONTH_MIN_DAYS
+      ? ("可用 " + h + " 天 / 至少 " + MONTH_MIN_DAYS + " 天")
+      : ("可用 " + Math.min(h, MONTH_DAYS) + " 天（最近 30 条）");
   }
 
   /* =============== 今日总结结果展示 =============== */
@@ -1537,6 +1877,25 @@
     picked.forEach(function (d, i) {
       lines.push("=== 第 " + (i + 1) + " 天 ===");
       lines.push(dayToPlain(d, true));
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+
+  /* ★新增加：拼装月分析的数据（最近 30 条，从早到晚，并附上每天的日均分便于模型统计） */
+  function buildMonthData(history) {
+    var picked = history.slice(0, MONTH_DAYS).slice().sort(function (a, b) {
+      return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
+    });
+    var lines = [];
+    lines.push("本次共 " + picked.length + " 天记录（按日期从早到晚）：");
+    lines.push("");
+    picked.forEach(function (d, i) {
+      var e = dayAvgScore(d, "energy");
+      var m = dayAvgScore(d, "mood");
+      lines.push("=== 第 " + (i + 1) + " 天 ===");
+      lines.push(dayToPlain(d, true));
+      lines.push("  当日均分：精力 " + (e === null ? "未填" : e + "/5") + "　情绪 " + (m === null ? "未填" : m + "/5"));
       lines.push("");
     });
     return lines.join("\n");
@@ -1836,7 +2195,10 @@
     $("miscStatus").className = "status";
     $("miscStatus").textContent = "";
     $("statSize").textContent = estSize();
-    renderCounts();
+    // 只刷新“条数”这几个数字，不碰任何提示文字（提示文字由调用方负责）
+    $("statHist").textContent = store.getHistory().length + " 条";
+    $("statWeek").textContent = store.getWeekly().length + " 条";
+    if ($("statMonth")) $("statMonth").textContent = store.getMonthly().length + " 条";
     $("settingsMask").classList.remove("hidden");
   }
   function closeSettings() {
@@ -1933,11 +2295,14 @@
     localStorage.removeItem(LS.KEY);
     localStorage.removeItem(LS.MODEL);
     localStorage.removeItem(LS.IDEAS);          // ★新增：想法库一起清空
+    localStorage.removeItem(LS.MONTH);          // ★新增加：月总结一起清空
     refreshKeyDot();
     loadDate(state.date);
     renderCounts();
     renderWeeklyResult();
+    renderMonthlyResult();                      // ★新增加
     renderIdeas();                              // ★新增
+    renderChart();                              // ★新增加
     setStatus($("miscStatus"), "已全部清空。", "ok");
   }
 
@@ -1996,6 +2361,31 @@
 
     $("btnDaily").addEventListener("click", onGenerateDaily);
     $("btnWeekly").addEventListener("click", onGenerateWeekly);
+
+    /* ===== ★新增加：月分析 / 折线图 事件绑定 ===== */
+    $("btnMonthly").addEventListener("click", onGenerateMonthly);
+    $("btnChartWeek").addEventListener("click", function () {
+      chartState.days = 7;
+      renderChart();
+    });
+    $("btnChartMonth").addEventListener("click", function () {
+      chartState.days = 30;
+      renderChart();
+    });
+    $("btnCopyMonthTodo").addEventListener("click", function () {
+      var list = store.getMonthly();
+      copyText(extractTodoLines(list.length ? list[0].text : ""), $("monthlyCopyTip"));
+    });
+    $("btnCopyMonthly").addEventListener("click", function () {
+      var list = store.getMonthly();
+      copyText(list.length ? list[0].text : "", null);
+    });
+    $("btnHideMonthly").addEventListener("click", function () { $("monthlyResultCard").hidden = true; });
+
+    // 手机上转横屏/改窗口大小时，让折线图按新宽度重画
+    window.addEventListener("resize", function () {
+      if (trendChart) { try { trendChart.resize(); } catch (e) {} }
+    });
 
     $("btnClearDay").addEventListener("click", function () {
       if (!confirm("确定清空 " + state.date + " 这一天填的内容吗？")) return;
@@ -2089,6 +2479,26 @@
       reclassifyUncat: reclassifyUncat,
       reclassifyOthers: reclassifyOthers,
       del: deleteIdea
+    },
+    /* ★新增加：趋势图 / 月分析 测试钩子 */
+    chart: {
+      state: chartState,
+      data: buildChartData,
+      render: renderChart,
+      dayAvg: dayAvgScore,
+      energyColor: ENERGY_COLOR,
+      moodColor: MOOD_COLOR
+    },
+    month: {
+      max: MONTH_MAX,
+      minDays: MONTH_MIN_DAYS,
+      days: MONTH_DAYS,
+      prompt: PROMPT_MONTH,
+      get: store.getMonthly,
+      add: store.addMonthly,
+      render: renderMonthlyResult,
+      gen: onGenerateMonthly,
+      buildData: buildMonthData
     }
   };
 
@@ -2106,6 +2516,8 @@
     renderCounts();
     renderWeeklyResult();
     renderIdeas();                      // ★新增：渲染想法库
+    renderMonthlyResult();              // ★新增加：渲染上次的月总结
+    renderChart();                      // ★新增加：画趋势折线图
     if (!store.getKey()) {
       setTimeout(function () {
         showToast("第一次使用：点右上角的设置按钮填入 API Key");
@@ -2118,6 +2530,7 @@
   } else {
     init();
   }
+  window.__pdReady = true;      // ★新增：给自动化测试用的“初始化完成”标记
 })();
 </script>
 </body>
